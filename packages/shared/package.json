@@ -15,7 +15,8 @@
     "@paralleldrive/cuid2": "^3.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "vitest": "^3.2.4"
+    "@types/node": "^22.20.2",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
   }
 }

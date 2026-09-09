@@ -11,13 +11,13 @@
   },
   "dependencies": {
     "@plunk/node": "^3.0.3",
-    "better-auth": "^1.0.0",
+    "better-auth": "^1.7.3",
     "db": "workspace:*",
     "otel": "workspace:*",
     "shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.20.2",
+    "typescript": "^6.0.3"
   }
 }

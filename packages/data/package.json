@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "db": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^3.2.4"
+    "@types/node": "^22.20.2",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
   }
 }

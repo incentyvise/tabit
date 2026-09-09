@@ -15,16 +15,16 @@
     "db:studio": "doppler run -- drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "models": "workspace:*",
-    "shared": "workspace:*",
-    "pg": "^8.13.0"
+    "pg": "^8.23.0",
+    "shared": "workspace:*"
   },
   "devDependencies": {
-    "dotenv-cli": "^7.4.2",
-    "@types/node": "^22.0.0",
-    "@types/pg": "^8.11.0",
-    "drizzle-kit": "^0.30.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.20.2",
+    "@types/pg": "^8.23.1",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^6.0.3"
   }
 }

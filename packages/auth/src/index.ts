@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type Auth } from "better-auth";
 import { createFullId, parseCorsOrigins } from "shared";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
@@ -171,4 +171,4 @@ export const auth = betterAuth({
     "https://localhost:3003",
     "http://localhost:3003",
   ),
-});
+}) as unknown as Auth;

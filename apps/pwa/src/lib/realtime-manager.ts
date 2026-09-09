@@ -31,7 +31,7 @@ function getRealtimeUrl(): string {
   }
 }
 
-function usePollingOnly(): boolean {
+function shouldUsePollingOnly(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const target = new URL(getRealtimeUrl());
@@ -89,7 +89,7 @@ class RealtimeManager {
     const socket = io(getRealtimeUrl(), {
       withCredentials: true,
       // HTTPS static PWA -> HTTP workers: avoid failed ws/wss upgrade.
-      transports: usePollingOnly() ? ["polling"] : ["websocket", "polling"],
+      transports: shouldUsePollingOnly() ? ["polling"] : ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
