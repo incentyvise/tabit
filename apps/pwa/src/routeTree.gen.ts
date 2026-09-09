@@ -9,36 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as InviteRouteImport } from './routes/invite'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as InviteRouteImport } from './routes/invite'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
-import { Route as AuthenticatedTabsIndexRouteImport } from './routes/_authenticated/tabs/index'
-import { Route as AuthenticatedFriendsIndexRouteImport } from './routes/_authenticated/friends/index'
-import { Route as AuthenticatedTabsNewRouteImport } from './routes/_authenticated/tabs/new'
-import { Route as AuthenticatedFriendsAddFriendRouteImport } from './routes/_authenticated/friends/addFriend'
-import { Route as AuthenticatedFriendsAddByQrRouteImport } from './routes/_authenticated/friends/add-by-qr'
+import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedExpenseNewRouteImport } from './routes/_authenticated/expense/new'
-import { Route as AuthenticatedTabsTabIdIndexRouteImport } from './routes/_authenticated/tabs/$tabId/index'
-import { Route as AuthenticatedTabsTabIdMembersRouteImport } from './routes/_authenticated/tabs/$tabId/members'
-import { Route as AuthenticatedTabsTabIdManageRouteImport } from './routes/_authenticated/tabs/$tabId/manage'
+import { Route as AuthenticatedFriendsIndexRouteImport } from './routes/_authenticated/friends/index'
+import { Route as AuthenticatedFriendsAddByQrRouteImport } from './routes/_authenticated/friends/add-by-qr'
+import { Route as AuthenticatedFriendsAddFriendRouteImport } from './routes/_authenticated/friends/addFriend'
+import { Route as AuthenticatedTabsIndexRouteImport } from './routes/_authenticated/tabs/index'
+import { Route as AuthenticatedTabsNewRouteImport } from './routes/_authenticated/tabs/new'
 import { Route as AuthenticatedExpenseRecurringRuleIdRouteImport } from './routes/_authenticated/expense/recurring/$ruleId'
-import { Route as AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport } from './routes/_authenticated/tabs/$tabId/settlements/$settlementId'
+import { Route as AuthenticatedTabsTabIdIndexRouteImport } from './routes/_authenticated/tabs/$tabId/index'
+import { Route as AuthenticatedTabsTabIdManageRouteImport } from './routes/_authenticated/tabs/$tabId/manage'
+import { Route as AuthenticatedTabsTabIdMembersRouteImport } from './routes/_authenticated/tabs/$tabId/members'
 import { Route as AuthenticatedTabsTabIdExpensesExpenseIdRouteImport } from './routes/_authenticated/tabs/$tabId/expenses/$expenseId'
+import { Route as AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport } from './routes/_authenticated/tabs/$tabId/settlements/$settlementId'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -46,13 +45,14 @@ const InviteRoute = InviteRouteImport.update({
   path: '/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SplatRoute = SplatRouteImport.update({
-  id: '/$',
-  path: '/$',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -60,9 +60,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
@@ -70,14 +70,14 @@ const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   path: '/me',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedTabsIndexRoute = AuthenticatedTabsIndexRouteImport.update({
-  id: '/tabs/',
-  path: '/tabs/',
+const AuthenticatedExpenseNewRoute = AuthenticatedExpenseNewRouteImport.update({
+  id: '/expense/new',
+  path: '/expense/new',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedFriendsIndexRoute =
@@ -86,38 +86,38 @@ const AuthenticatedFriendsIndexRoute =
     path: '/friends/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedTabsNewRoute = AuthenticatedTabsNewRouteImport.update({
-  id: '/tabs/new',
-  path: '/tabs/new',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedFriendsAddFriendRoute =
-  AuthenticatedFriendsAddFriendRouteImport.update({
-    id: '/friends/addFriend',
-    path: '/friends/addFriend',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedFriendsAddByQrRoute =
   AuthenticatedFriendsAddByQrRouteImport.update({
     id: '/friends/add-by-qr',
     path: '/friends/add-by-qr',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedExpenseNewRoute = AuthenticatedExpenseNewRouteImport.update({
-  id: '/expense/new',
-  path: '/expense/new',
+const AuthenticatedFriendsAddFriendRoute =
+  AuthenticatedFriendsAddFriendRouteImport.update({
+    id: '/friends/addFriend',
+    path: '/friends/addFriend',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedTabsIndexRoute = AuthenticatedTabsIndexRouteImport.update({
+  id: '/tabs/',
+  path: '/tabs/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTabsNewRoute = AuthenticatedTabsNewRouteImport.update({
+  id: '/tabs/new',
+  path: '/tabs/new',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExpenseRecurringRuleIdRoute =
+  AuthenticatedExpenseRecurringRuleIdRouteImport.update({
+    id: '/expense/recurring/$ruleId',
+    path: '/expense/recurring/$ruleId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTabsTabIdIndexRoute =
   AuthenticatedTabsTabIdIndexRouteImport.update({
     id: '/tabs/$tabId/',
     path: '/tabs/$tabId/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedTabsTabIdMembersRoute =
-  AuthenticatedTabsTabIdMembersRouteImport.update({
-    id: '/tabs/$tabId/members',
-    path: '/tabs/$tabId/members',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedTabsTabIdManageRoute =
@@ -126,22 +126,22 @@ const AuthenticatedTabsTabIdManageRoute =
     path: '/tabs/$tabId/manage',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedExpenseRecurringRuleIdRoute =
-  AuthenticatedExpenseRecurringRuleIdRouteImport.update({
-    id: '/expense/recurring/$ruleId',
-    path: '/expense/recurring/$ruleId',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedTabsTabIdSettlementsSettlementIdRoute =
-  AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport.update({
-    id: '/tabs/$tabId/settlements/$settlementId',
-    path: '/tabs/$tabId/settlements/$settlementId',
+const AuthenticatedTabsTabIdMembersRoute =
+  AuthenticatedTabsTabIdMembersRouteImport.update({
+    id: '/tabs/$tabId/members',
+    path: '/tabs/$tabId/members',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedTabsTabIdExpensesExpenseIdRoute =
   AuthenticatedTabsTabIdExpensesExpenseIdRouteImport.update({
     id: '/tabs/$tabId/expenses/$expenseId',
     path: '/tabs/$tabId/expenses/$expenseId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedTabsTabIdSettlementsSettlementIdRoute =
+  AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport.update({
+    id: '/tabs/$tabId/settlements/$settlementId',
+    path: '/tabs/$tabId/settlements/$settlementId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -293,25 +293,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite': {
-      id: '/invite'
-      path: '/invite'
-      fullPath: '/invite'
-      preLoaderRoute: typeof InviteRouteImport
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -321,11 +307,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$': {
-      id: '/$'
-      path: '/$'
-      fullPath: '/$'
-      preLoaderRoute: typeof SplatRouteImport
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -335,11 +335,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+    '/_authenticated/activity': {
+      id: '/_authenticated/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/me': {
@@ -349,46 +349,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMeRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/activity': {
-      id: '/_authenticated/activity'
-      path: '/activity'
-      fullPath: '/activity'
-      preLoaderRoute: typeof AuthenticatedActivityRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/tabs/': {
-      id: '/_authenticated/tabs/'
-      path: '/tabs'
-      fullPath: '/tabs/'
-      preLoaderRoute: typeof AuthenticatedTabsIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/friends/': {
-      id: '/_authenticated/friends/'
-      path: '/friends'
-      fullPath: '/friends/'
-      preLoaderRoute: typeof AuthenticatedFriendsIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/tabs/new': {
-      id: '/_authenticated/tabs/new'
-      path: '/tabs/new'
-      fullPath: '/tabs/new'
-      preLoaderRoute: typeof AuthenticatedTabsNewRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/friends/addFriend': {
-      id: '/_authenticated/friends/addFriend'
-      path: '/friends/addFriend'
-      fullPath: '/friends/addFriend'
-      preLoaderRoute: typeof AuthenticatedFriendsAddFriendRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/friends/add-by-qr': {
-      id: '/_authenticated/friends/add-by-qr'
-      path: '/friends/add-by-qr'
-      fullPath: '/friends/add-by-qr'
-      preLoaderRoute: typeof AuthenticatedFriendsAddByQrRouteImport
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/expense/new': {
@@ -398,25 +363,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpenseNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/tabs/$tabId/': {
-      id: '/_authenticated/tabs/$tabId/'
-      path: '/tabs/$tabId'
-      fullPath: '/tabs/$tabId/'
-      preLoaderRoute: typeof AuthenticatedTabsTabIdIndexRouteImport
+    '/_authenticated/friends/': {
+      id: '/_authenticated/friends/'
+      path: '/friends'
+      fullPath: '/friends/'
+      preLoaderRoute: typeof AuthenticatedFriendsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/tabs/$tabId/members': {
-      id: '/_authenticated/tabs/$tabId/members'
-      path: '/tabs/$tabId/members'
-      fullPath: '/tabs/$tabId/members'
-      preLoaderRoute: typeof AuthenticatedTabsTabIdMembersRouteImport
+    '/_authenticated/friends/add-by-qr': {
+      id: '/_authenticated/friends/add-by-qr'
+      path: '/friends/add-by-qr'
+      fullPath: '/friends/add-by-qr'
+      preLoaderRoute: typeof AuthenticatedFriendsAddByQrRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/tabs/$tabId/manage': {
-      id: '/_authenticated/tabs/$tabId/manage'
-      path: '/tabs/$tabId/manage'
-      fullPath: '/tabs/$tabId/manage'
-      preLoaderRoute: typeof AuthenticatedTabsTabIdManageRouteImport
+    '/_authenticated/friends/addFriend': {
+      id: '/_authenticated/friends/addFriend'
+      path: '/friends/addFriend'
+      fullPath: '/friends/addFriend'
+      preLoaderRoute: typeof AuthenticatedFriendsAddFriendRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tabs/': {
+      id: '/_authenticated/tabs/'
+      path: '/tabs'
+      fullPath: '/tabs/'
+      preLoaderRoute: typeof AuthenticatedTabsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tabs/new': {
+      id: '/_authenticated/tabs/new'
+      path: '/tabs/new'
+      fullPath: '/tabs/new'
+      preLoaderRoute: typeof AuthenticatedTabsNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/expense/recurring/$ruleId': {
@@ -426,11 +405,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpenseRecurringRuleIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/tabs/$tabId/settlements/$settlementId': {
-      id: '/_authenticated/tabs/$tabId/settlements/$settlementId'
-      path: '/tabs/$tabId/settlements/$settlementId'
-      fullPath: '/tabs/$tabId/settlements/$settlementId'
-      preLoaderRoute: typeof AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport
+    '/_authenticated/tabs/$tabId/': {
+      id: '/_authenticated/tabs/$tabId/'
+      path: '/tabs/$tabId'
+      fullPath: '/tabs/$tabId/'
+      preLoaderRoute: typeof AuthenticatedTabsTabIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tabs/$tabId/manage': {
+      id: '/_authenticated/tabs/$tabId/manage'
+      path: '/tabs/$tabId/manage'
+      fullPath: '/tabs/$tabId/manage'
+      preLoaderRoute: typeof AuthenticatedTabsTabIdManageRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tabs/$tabId/members': {
+      id: '/_authenticated/tabs/$tabId/members'
+      path: '/tabs/$tabId/members'
+      fullPath: '/tabs/$tabId/members'
+      preLoaderRoute: typeof AuthenticatedTabsTabIdMembersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/tabs/$tabId/expenses/$expenseId': {
@@ -438,6 +431,13 @@ declare module '@tanstack/react-router' {
       path: '/tabs/$tabId/expenses/$expenseId'
       fullPath: '/tabs/$tabId/expenses/$expenseId'
       preLoaderRoute: typeof AuthenticatedTabsTabIdExpensesExpenseIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tabs/$tabId/settlements/$settlementId': {
+      id: '/_authenticated/tabs/$tabId/settlements/$settlementId'
+      path: '/tabs/$tabId/settlements/$settlementId'
+      fullPath: '/tabs/$tabId/settlements/$settlementId'
+      preLoaderRoute: typeof AuthenticatedTabsTabIdSettlementsSettlementIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }

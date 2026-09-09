@@ -1,0 +1,38 @@
+---
+description: Centralized dependency versions via pnpm catalog
+alwaysApply: true
+---
+
+# Dependencies
+
+## Single source of truth
+
+All external dependency versions live in the **pnpm catalog** at the root of `pnpm-workspace.yaml`. Workspace packages reference catalog entries — never pin versions inline in individual `package.json` files.
+
+```json
+{
+  "dependencies": {
+    "zod": "catalog:",
+    "models": "workspace:*"
+  }
+}
+```
+
+## Adding or updating a dependency
+
+1. **New dependency** used in one package: add the version to `catalog:` in `pnpm-workspace.yaml`, then add `"<name>": "catalog:"` in the package's `package.json`.
+2. **Bump a version**: change it only in `pnpm-workspace.yaml` catalog. All packages using `"catalog:"` pick up the new version on `pnpm install`.
+3. **Workspace packages** (`models`, `db`, `rpc`, etc.): always use `"workspace:*"` — never catalog.
+
+## Do not
+
+- Put version ranges (`^1.2.3`) in app or package `package.json` files for external deps
+- Duplicate the same dependency version across multiple `package.json` files
+- Add dependencies to the root `package.json` unless they are repo-wide tooling (turbo, concurrently, etc.) — still use `catalog:` for their versions
+
+## After catalog changes
+
+```bash
+pnpm install
+pnpm check
+```

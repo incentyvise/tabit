@@ -37,10 +37,12 @@ export function UpdateBannerProvider({
         return;
       }
 
+      const swRegistration = registration;
+
       async function checkForUpdate() {
         if (
-          registration.installing ||
-          registration.waiting ||
+          swRegistration.installing ||
+          swRegistration.waiting ||
           !navigator.onLine
         ) {
           return;
@@ -50,7 +52,7 @@ export function UpdateBannerProvider({
             cache: "no-store",
             headers: { "Cache-Control": "no-cache" },
           });
-          if (resp?.status === 200) await registration.update();
+          if (resp?.status === 200) await swRegistration.update();
         } catch {
           // ignore
         }

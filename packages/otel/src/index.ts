@@ -16,7 +16,7 @@ import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 
@@ -86,7 +86,7 @@ export function initTelemetry(serviceName: string): void {
   const deploymentEnv =
     process.env.NODE_ENV === "production" ? "production" : "development";
 
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     "service.name": name,
     "deployment.environment.name": deploymentEnv,
   });
@@ -119,10 +119,10 @@ export function initTelemetry(serviceName: string): void {
 
   if (hasOtlpEndpoint()) {
     const logExporter = new OTLPLogExporter();
-    loggerProvider = new LoggerProvider({ resource });
-    loggerProvider.addLogRecordProcessor(
-      new BatchLogRecordProcessor(logExporter),
-    );
+    loggerProvider = new LoggerProvider({
+      resource,
+      processors: [new BatchLogRecordProcessor({ exporter: logExporter })],
+    });
     logs.setGlobalLoggerProvider(loggerProvider);
     otelLogger = loggerProvider.getLogger("default", "1.0.0");
   }

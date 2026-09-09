@@ -29,7 +29,7 @@ import {
   Pencil,
   Copy,
   Share2,
-  Github,
+  Code,
   Heart,
   ExternalLink,
   Mic,
@@ -825,7 +825,7 @@ function SupportSection() {
               className="group flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/30"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Github className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                <Code className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium">Star on GitHub</span>

@@ -22,17 +22,17 @@
   },
   "dependencies": {
     "data": "workspace:*",
-    "queue": "workspace:*",
-    "luxon": "^3.5.0",
+    "luxon": "catalog:",
     "models": "workspace:*",
     "otel": "workspace:*",
+    "queue": "workspace:*",
     "shared": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/luxon": "^3.4.2",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^3.2.4"
+    "@types/luxon": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

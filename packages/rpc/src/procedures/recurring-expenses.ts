@@ -18,7 +18,7 @@ export const recurringExpensesProcedures = {
     .input(
       z.object({
         tabId: z.string(),
-        body: z.record(z.unknown()),
+        body: z.record(z.string(), z.unknown()),
       }),
     )
     .handler(async ({ context, input }) => {
@@ -46,7 +46,7 @@ export const recurringExpensesProcedures = {
     .input(
       z.object({
         ruleId: z.string(),
-        body: z.record(z.unknown()),
+        body: z.record(z.string(), z.unknown()),
       }),
     )
     .handler(async ({ context, input }) => {

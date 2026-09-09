@@ -11,17 +11,17 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.0",
-    "@orpc/server": "^1.10.0",
+    "@hono/node-server": "catalog:",
+    "@orpc/server": "catalog:",
     "auth": "workspace:*",
-    "hono": "^4.6.0",
+    "hono": "catalog:",
     "otel": "workspace:*",
     "rpc": "workspace:*",
     "shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.0.0"
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

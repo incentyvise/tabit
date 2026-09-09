@@ -142,7 +142,7 @@ export const expensesProcedures = {
     .input(
       z.object({
         tabId: z.string(),
-        body: z.record(z.unknown()),
+        body: z.record(z.string(), z.unknown()),
       }),
     )
     .handler(async ({ context, input }) => {
@@ -226,7 +226,7 @@ export const expensesProcedures = {
     .input(
       z.object({
         tabId: z.string(),
-        expenses: z.array(z.record(z.unknown())),
+        expenses: z.array(z.record(z.string(), z.unknown())),
       }),
     )
     .handler(async ({ context, input }) => {
@@ -249,7 +249,7 @@ export const expensesProcedures = {
       z.object({
         tabId: z.string(),
         expenseId: z.string(),
-        body: z.record(z.unknown()),
+        body: z.record(z.string(), z.unknown()),
       }),
     )
     .handler(async ({ context, input }) => {

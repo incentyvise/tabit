@@ -18,9 +18,9 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.0",
-    "@orpc/server": "^1.10.0",
-    "ai": "^6.0.116",
+    "@ai-sdk/google": "catalog:",
+    "@orpc/server": "catalog:",
+    "ai": "catalog:",
     "auth": "workspace:*",
     "data": "workspace:*",
     "models": "workspace:*",
@@ -28,10 +28,10 @@
     "queue": "workspace:*",
     "services": "workspace:*",
     "shared": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }

@@ -13,21 +13,21 @@
   "dependencies": {
     "auth": "workspace:*",
     "db": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "catalog:",
     "models": "workspace:*",
-    "node-cron": "^4.2.1",
+    "node-cron": "catalog:",
     "otel": "workspace:*",
     "queue": "workspace:*",
     "services": "workspace:*",
     "shared": "workspace:*",
-    "socket.io": "^4.8.1",
-    "web-push": "^3.6.7"
+    "socket.io": "catalog:",
+    "web-push": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/node-cron": "^3.0.11",
-    "@types/web-push": "^3.6.3",
-    "tsx": "^4.19.0",
-    "typescript": "^5.0.0"
+    "@types/node": "catalog:",
+    "@types/node-cron": "catalog:",
+    "@types/web-push": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }
