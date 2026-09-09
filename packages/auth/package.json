@@ -10,14 +10,14 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@plunk/node": "^3.0.3",
-    "better-auth": "^1.7.3",
+    "@plunk/node": "catalog:",
+    "better-auth": "catalog:",
     "db": "workspace:*",
     "otel": "workspace:*",
     "shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
-    "typescript": "^6.0.3"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }

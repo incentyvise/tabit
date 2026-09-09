@@ -18,9 +18,9 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.5.4"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "typescript": "catalog:"
   }
 }

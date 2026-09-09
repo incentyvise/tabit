@@ -12,11 +12,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@paralleldrive/cuid2": "^3.3.0"
+    "@paralleldrive/cuid2": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

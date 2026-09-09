@@ -49,6 +49,12 @@ pnpm --filter services test           # Run only services package tests
 pnpm start:prod                       # Runs db:migrate:prod then starts all services
 ```
 
+### Dependencies
+
+External dependency versions are centralized in the **pnpm catalog** (`pnpm-workspace.yaml`). Workspace packages declare `"<name>": "catalog:"` — never pin versions in individual `package.json` files. Internal packages use `"workspace:*"`.
+
+To add or bump a dependency, edit the catalog entry in `pnpm-workspace.yaml`, then run `pnpm install`.
+
 ## Architecture
 
 ### Monorepo Structure

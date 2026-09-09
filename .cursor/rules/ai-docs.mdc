@@ -12,6 +12,10 @@ When making implementation decisions, read and use:
 - **ai/SOUL.md** - Architecture, commands, conventions, and patterns. Use for implementation guidance.
 - **ai/FEATURES.md** - Current feature list. Use to understand existing capabilities and avoid duplicating features.
 
+## Dependencies
+
+Follow `.cursor/rules/dependencies.mdc`: all external versions live in the pnpm catalog (`pnpm-workspace.yaml`); package `package.json` files use `"catalog:"` references only.
+
 ## Update FEATURES.md
 
 When implementing **new features** or **significant updates** that add user-facing functionality:
