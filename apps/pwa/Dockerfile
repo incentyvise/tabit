@@ -1,5 +1,5 @@
 # Stage 1: Prepare - prune monorepo for pwa only
-FROM node:24-alpine AS prepare
+FROM node:26-alpine AS prepare
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -11,7 +11,7 @@ COPY . .
 RUN turbo prune pwa --docker
 
 # Stage 2: Install dependencies + build (Vite bakes VITE_* / NEXT_PUBLIC_* at build time)
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 RUN apk add --no-cache curl gnupg \
     && curl -sLf --retry 3 https://cli.doppler.com/install.sh | sh
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate

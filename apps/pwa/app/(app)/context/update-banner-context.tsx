@@ -31,6 +31,7 @@ export function UpdateBannerProvider({
       cleanupRef.current?.();
 
       if (!registration) return;
+      const reg = registration;
 
       if (sessionStorage.getItem(SW_JUST_UPDATED_KEY)) {
         sessionStorage.removeItem(SW_JUST_UPDATED_KEY);
@@ -39,8 +40,8 @@ export function UpdateBannerProvider({
 
       async function checkForUpdate() {
         if (
-          registration.installing ||
-          registration.waiting ||
+          reg.installing ||
+          reg.waiting ||
           !navigator.onLine
         ) {
           return;
@@ -50,7 +51,7 @@ export function UpdateBannerProvider({
             cache: "no-store",
             headers: { "Cache-Control": "no-cache" },
           });
-          if (resp?.status === 200) await registration.update();
+          if (resp?.status === 200) await reg.update();
         } catch {
           // ignore
         }

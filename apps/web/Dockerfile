@@ -1,5 +1,5 @@
 # Stage 1: Prepare - prune monorepo for web only
-FROM node:24-alpine AS prepare
+FROM node:26-alpine AS prepare
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -11,7 +11,7 @@ COPY . .
 RUN turbo prune web --docker
 
 # Stage 2: Install dependencies
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
 
@@ -48,7 +48,7 @@ ENV TURBO_TOKEN=$TURBO_TOKEN
 RUN pnpm build
 
 # Stage 3: Production
-FROM node:24-alpine AS prod
+FROM node:26-alpine AS prod
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
 
