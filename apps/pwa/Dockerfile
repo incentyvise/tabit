@@ -1,6 +1,6 @@
 # Stage 1: Prepare - prune monorepo for pwa only
 FROM node:26-alpine AS prepare
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN npm install -g pnpm@10.32.1
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN turbo prune pwa --docker
 FROM node:26-alpine AS builder
 RUN apk add --no-cache curl gnupg \
     && curl -sLf --retry 3 https://cli.doppler.com/install.sh | sh
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN npm install -g pnpm@10.32.1
 WORKDIR /app
 
 COPY --from=prepare /app/out/json/ .

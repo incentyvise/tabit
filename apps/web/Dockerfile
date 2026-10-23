@@ -1,6 +1,6 @@
 # Stage 1: Prepare - prune monorepo for web only
 FROM node:26-alpine AS prepare
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN npm install -g pnpm@10.32.1
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 WORKDIR /app
@@ -12,7 +12,7 @@ RUN turbo prune web --docker
 
 # Stage 2: Install dependencies
 FROM node:26-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN npm install -g pnpm@10.32.1
 WORKDIR /app
 
 COPY --from=prepare /app/out/json/ .
@@ -49,7 +49,7 @@ RUN pnpm build
 
 # Stage 3: Production
 FROM node:26-alpine AS prod
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN npm install -g pnpm@10.32.1
 WORKDIR /app
 
 ENV NODE_ENV=production
