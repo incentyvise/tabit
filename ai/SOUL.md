@@ -61,7 +61,7 @@ pnpm start:prod                       # Runs db:migrate:prod then starts all ser
 - `packages/models` — Shared Zod schemas and TypeScript types
 - `packages/rpc` — oRPC `appRouter` (procedures call `services`)
 - `packages/queue` — BullMQ `notifications` queue + worker factory
-- `packages/auth` — Better Auth (email OTP, 1-year sessions, emails via Plunk)
+- `packages/auth` — Better Auth (email OTP, 1-year sessions, emails via Sequenzy)
 - `packages/shared` — Shared utilities (e.g. `createId`)
 - `packages/otel` — OpenTelemetry setup (logs + traces to OTLP/SigNoz)
 - `packages/services` — Business logic; used by `rpc` procedures and workers
