@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURATED_CURRENCIES, getCurrency } from "shared";
+import { queryKeys } from "@/lib/queries";
 
 export function CreateTabForm() {
   const { data: session } = authClient.useSession();
@@ -49,7 +50,7 @@ export function CreateTabForm() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["tabs"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tabs });
       navigate(`/tabs/${result.tabId}`);
     },
   });

@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Settlement } from "@/lib/domain-types";
+import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -215,17 +216,7 @@ export function EditSettlementForm({
       });
 
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["settlements", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
-        queryClient.invalidateQueries({
-          queryKey: ["settlement", tabId, settlementId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["settlementAuditLog", tabId, settlementId],
-        });
+        void invalidateTabData(queryClient, tabId, { settlementId });
         toast.success("Settlement updated");
         if (onSuccess) onSuccess();
         else navigate(`/tabs/${tabId}`);
@@ -285,11 +276,7 @@ export function EditSettlementForm({
     setDeleting(true);
     const result = await api.settlements.delete(tabId, settlementId);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["settlements", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      void invalidateTabData(queryClient, tabId, { settlementId });
       toast.success("Settlement deleted");
       const cb = onDeleteSuccess ?? onSuccess;
       if (cb) cb();

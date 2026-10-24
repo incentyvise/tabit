@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useNavigate, useLocation, useSearchParams, Link } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
@@ -7,6 +7,7 @@ import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { getDisplayName } from "@/lib/display-name";
+import { invalidateMembership } from "@/lib/queries";
 
 function InviteContent() {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ function InviteContent() {
   const qrParam = searchParams.get("qr");
 
   const isTabInvite = typeParam === "tab" && tokenParam;
+  // The token lookups below must not re-run when the session object or
+  // search params change identity (focus refetch, navigation start).
+  const requestedRef = useRef(false);
 
   useEffect(() => {
     if (isPending) return;
@@ -53,6 +57,8 @@ function InviteContent() {
         });
         return;
       }
+      if (requestedRef.current) return;
+      requestedRef.current = true;
       api.tabInvites.getByToken(tokenParam!).then((result) => {
         if (result.success && result.tab && result.creator && result.tabId) {
           setTabInvite({
@@ -80,11 +86,11 @@ function InviteContent() {
         });
         return;
       }
+      if (requestedRef.current) return;
+      requestedRef.current = true;
       api.friends.addByToken(qrParam).then((result) => {
         if (result.success && result.friendTabId) {
-          queryClient.invalidateQueries({ queryKey: ["friends"] });
-          queryClient.invalidateQueries({ queryKey: ["tabs"] });
-          queryClient.invalidateQueries({ queryKey: ["activity"] });
+          void invalidateMembership(queryClient);
           navigate(`/tabs/${result.friendTabId}`, { replace: true });
         } else if (!result.success) {
           setStatus("error");
@@ -97,6 +103,7 @@ function InviteContent() {
       return;
     }
 
+    if (requestedRef.current) return;
     setStatus("error");
     setError("Invalid invite link");
   }, [
@@ -118,9 +125,7 @@ function InviteContent() {
     const result = await api.tabInvites.joinByToken(tokenParam);
     setAccepting(false);
     if (result.success && result.tabId) {
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
-      queryClient.invalidateQueries({ queryKey: ["tabs"] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      void invalidateMembership(queryClient);
       if (result.alreadyMember) {
         navigate(`/tabs/${result.tabId}`, { replace: true });
       } else {

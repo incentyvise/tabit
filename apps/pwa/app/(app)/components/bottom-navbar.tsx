@@ -4,11 +4,11 @@ import { Users, Activity, User, ReceiptText } from "lucide-react";
 import { useUpdateBanner } from "@/app/(app)/context/update-banner-context";
 import { useNeedsPushResubscription } from "@/app/(app)/context/push-resubscription-context";
 import { authClient } from "@/lib/auth-client";
-import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { AddExpenseButton } from "@/app/(app)/components/add-expense-button";
 import type { ConnectionState } from "@/src/lib/realtime-manager";
+import { pendingFriendRequestsQuery, pendingTabInviteRequestsQuery } from "@/lib/queries";
 
 type BottomNavbarProps = {
   connectionState: ConnectionState;
@@ -24,20 +24,8 @@ const tabs = [
 export function BottomNavbar({ connectionState }: BottomNavbarProps) {
   const { pathname } = useLocation();
   const { data: session } = authClient.useSession();
-  const { data: friendRequestsData } = useQuery({
-    queryKey: ["pendingFriendRequests"],
-    queryFn: async () => {
-      const r = await api.friends.getPendingRequests();
-      return r.success ? r.requests : [];
-    },
-  });
-  const { data: tabInvitesData } = useQuery({
-    queryKey: ["pendingTabInviteRequests"],
-    queryFn: async () => {
-      const r = await api.tabInvites.getPendingRequests();
-      return r.success ? r.requests : [];
-    },
-  });
+  const { data: friendRequestsData } = useQuery(pendingFriendRequestsQuery());
+  const { data: tabInvitesData } = useQuery(pendingTabInviteRequestsQuery());
   const friendInviteCount = friendRequestsData?.length ?? 0;
   const tabInviteCount = tabInvitesData?.length ?? 0;
   const needsPushResubscription = useNeedsPushResubscription();
@@ -51,8 +39,7 @@ export function BottomNavbar({ connectionState }: BottomNavbarProps) {
     >
       {tabs.slice(0, 2).map(({ href, label, icon: Icon }) => {
         const isActive =
-          pathname === href ||
-          (href === "/tabs" && pathname.startsWith("/tabs/"));
+          pathname === href || pathname.startsWith(`${href}/`);
         const showBadge =
           (href === "/friends" && friendInviteCount > 0) ||
           (href === "/tabs" && tabInviteCount > 0) ||
@@ -115,8 +102,7 @@ export function BottomNavbar({ connectionState }: BottomNavbarProps) {
       <AddExpenseButton />
       {tabs.slice(2).map(({ href, label, icon: Icon }) => {
         const isActive =
-          pathname === href ||
-          (href === "/tabs" && pathname.startsWith("/tabs/"));
+          pathname === href || pathname.startsWith(`${href}/`);
         const showBadge =
           (href === "/friends" && friendInviteCount > 0) ||
           (href === "/tabs" && tabInviteCount > 0) ||

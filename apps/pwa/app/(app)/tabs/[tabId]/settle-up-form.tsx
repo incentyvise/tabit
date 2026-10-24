@@ -37,6 +37,7 @@ import { CURATED_CURRENCIES, getCurrency, simplifyDebts } from "shared";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Balance } from "@/lib/domain-types";
+import { invalidateTabData } from "@/lib/queries";
 
 type TabParticipant = {
   id: string;
@@ -224,11 +225,7 @@ export function SettleUpForm({
         form.reset();
         form.setFieldValue("currency", tabCurrency);
         form.setFieldValue("settlementDate", new Date());
-        queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["settlements", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
+        void invalidateTabData(queryClient, tabId);
         toast.success("Settlement recorded");
         onSuccess?.();
         return;

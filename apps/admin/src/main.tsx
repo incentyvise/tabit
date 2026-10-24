@@ -9,6 +9,9 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: "intent",
+  // Content scrolls inside <main>, not the document.
+  scrollRestoration: true,
+  scrollToTopSelectors: ['[data-scroll-restoration-id="admin-main"]'],
 });
 
 declare module "@tanstack/react-router" {

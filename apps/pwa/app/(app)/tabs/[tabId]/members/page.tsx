@@ -32,20 +32,13 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { getDisplayName } from "@/lib/display-name";
 import { PlaceholderParticipantsCard } from "../placeholder-participants-card";
+import { invalidateTabData, queryKeys, tabInviteTokenQuery, tabQuery } from "@/lib/queries";
 
 function TabQRCode({ tabId }: { tabId: string }) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["tabInviteToken", tabId],
-    queryFn: async () => {
-      const result = await api.tabInvites.getToken(tabId);
-      if (!result.success) throw new Error(result.error ?? "Failed to load");
-      return result.url!;
-    },
-    enabled: !!tabId,
-  });
+  const { data, isLoading, error } = useQuery(tabInviteTokenQuery(tabId));
 
   const url = data ?? null;
 
@@ -179,14 +172,7 @@ export function TabMembersPage() {
   const setNavTitle = useNavTitle();
 
   const { data: session } = authClient.useSession();
-  const { data: tab, isPending: tabPending } = useQuery({
-    queryKey: ["tab", tabId],
-    queryFn: async () => {
-      const r = await api.tabs.get(tabId);
-      return r.success && r.tab ? r.tab : null;
-    },
-    enabled: !!tabId,
-  });
+  const { data: tab, isPending: tabPending } = useQuery(tabQuery(tabId));
   const currentUserId = session?.user?.id ?? "";
   const memberToRemove = removeMemberId
     ? tab?.members.find((m) => m.userId === removeMemberId)
@@ -199,7 +185,7 @@ export function TabMembersPage() {
     setRemoving(false);
     setRemoveMemberId(null);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
+      void invalidateTabData(queryClient, tabId);
       toast.success("Member removed");
     } else {
       toast.error(result.error ?? "Failed to remove member");
@@ -269,7 +255,9 @@ export function TabMembersPage() {
       setSearchResults((prev) =>
         prev.filter((u) => u.username !== targetUsername),
       );
-      queryClient.invalidateQueries({ queryKey: ["tabInviteToken", tabId] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tabInviteToken(tabId),
+      });
     } else {
       setError(result.error ?? "Failed to send invite");
     }
@@ -373,16 +361,7 @@ export function TabMembersPage() {
             tabIdOrEmpty={tabId}
             tab={tab}
             currentUserId={currentUserId}
-            onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-              queryClient.invalidateQueries({ queryKey: ["tabs"] });
-              queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-              queryClient.invalidateQueries({
-                queryKey: ["expenses", tabId, "all"],
-              });
-              queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-              queryClient.invalidateQueries({ queryKey: ["activity"] });
-            }}
+            onSuccess={() => void invalidateTabData(queryClient, tabId)}
           />
         )}
 

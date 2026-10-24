@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Variants } from "framer-motion";
 
 /**
@@ -30,12 +31,6 @@ export const touchTransition = {
   ease: easeOutSlowIn,
 };
 
-export const pageTransition: Variants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-};
-
 export const transitionSpring = { transition: spring };
 
 /** Follow Through & Overlapping: list items settle with stagger. */
@@ -51,6 +46,7 @@ export const staggerItem: Variants = {
   animate: { opacity: 1, y: 0 },
 };
 
+
 /** Squash & Stretch: buttons compress on touch. Quick actions 150-250ms. */
 export const cardHover = {
   scale: 1.02,
@@ -62,3 +58,28 @@ export const fabSpring = {
   animate: { scale: 1 },
   transition: spring,
 };
+
+/** Only the first rows stagger; the rest would appear seconds later on long lists. */
+export const STAGGER_LIMIT = 8;
+
+export function staggerItemAt(index: number): Variants | undefined {
+  return index < STAGGER_LIMIT ? staggerItem : undefined;
+}
+
+const enteredLists = new Set<string>();
+
+/**
+ * `initial` value for a list container: the entrance stagger plays the first
+ * time a list mounts in this session only. Pages unmount on navigation and
+ * re-render instantly from the (persisted) query cache, so replaying it on
+ * every back-navigation just hides content that is already there.
+ */
+export function useListEntrance(listId: string): "initial" | false {
+  const [initial] = useState<"initial" | false>(() =>
+    enteredLists.has(listId) ? false : "initial",
+  );
+  useEffect(() => {
+    enteredLists.add(listId);
+  }, [listId]);
+  return initial;
+}

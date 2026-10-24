@@ -7,6 +7,7 @@ import { LogExpenseManual } from "@/app/(app)/components/log-expense-manual";
 import { api } from "@/lib/api-client";
 import { ReceiptText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { preferencesQuery, queryKeys } from "@/lib/queries";
 
 const ADD_EXPENSE_PREFERENCE_KEY = "add_expense_preference";
 
@@ -33,16 +34,7 @@ export function LogExpensePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: preferences } = useQuery({
-    queryKey: ["preferences"],
-    queryFn: async () => {
-      const r = await api.preferences.get();
-      return r.success
-        ? { addExpensePreference: r.addExpensePreference }
-        : null;
-    },
-    enabled: true,
-  });
+  const { data: preferences } = useQuery(preferencesQuery());
 
   const [entryMode, setEntryMode] = useState<"ai" | "manual">(() => {
     return getStoredPreference() ?? preferences?.addExpensePreference ?? "ai";
@@ -62,7 +54,7 @@ export function LogExpensePage() {
     setEntryMode(mode);
     setStoredPreference(mode);
     api.preferences.update({ addExpensePreference: mode }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ["preferences"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
     });
   };
 

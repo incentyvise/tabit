@@ -1,6 +1,8 @@
 /**
- * Minimal oRPC over HTTP for service worker (no orpc client bundle).
- * Uses the same POST /rpc protocol as @orpc/client.
+ * Minimal oRPC-over-HTTP client for the service worker (no orpc client bundle).
+ * Mirrors @orpc/client's RPCLink wire format: POST {rpcUrl}/{...path} with a
+ * `{ json, meta }` body; responses are `{ json, meta }` too. Only plain-JSON
+ * inputs/outputs are supported (no Date/BigInt/Map meta decoding).
  */
 
 function getApiBase(): string {
@@ -14,31 +16,35 @@ function getRpcUrl(): string {
   return base ? `${base}/rpc` : "/rpc";
 }
 
-type RpcCall = {
-  path: string[];
-  input?: unknown;
-};
+export class RpcHttpError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "RpcHttpError";
+    this.status = status;
+  }
+}
 
 export async function rpcCall<T>(procedure: string[], input?: unknown): Promise<T> {
-  const body: RpcCall = { path: procedure, input };
-  const res = await fetch(getRpcUrl(), {
+  const url = `${getRpcUrl()}/${procedure.map(encodeURIComponent).join("/")}`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ json: input ?? null, meta: [] }),
   });
+  const body = (await res.json().catch(() => null)) as {
+    json?: unknown;
+  } | null;
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `RPC failed: ${res.status}`);
+    const message =
+      (body?.json as { message?: string } | undefined)?.message ??
+      `RPC failed: ${res.status}`;
+    throw new RpcHttpError(message, res.status);
   }
-  const json = (await res.json()) as { json?: T; error?: { message?: string } };
-  if (json && typeof json === "object" && "error" in json && json.error) {
-    throw new Error(json.error.message ?? "RPC error");
-  }
-  if (json && typeof json === "object" && "json" in json) {
-    return json.json as T;
-  }
-  return json as T;
+  return (body && typeof body === "object" && "json" in body
+    ? body.json
+    : body) as T;
 }
 
 export function getApiUrlForSw(): string {

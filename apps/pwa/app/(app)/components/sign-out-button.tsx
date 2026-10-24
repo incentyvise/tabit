@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
+import { signOutAndClear } from "@/lib/session-cache";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
@@ -9,7 +9,7 @@ export function SignOutButton() {
     <Button
       variant="destructive"
       size="sm"
-      onClick={() => authClient.signOut()}
+      onClick={() => void signOutAndClear()}
     >
       <LogOut />
       Log Out

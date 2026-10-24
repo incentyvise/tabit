@@ -71,13 +71,6 @@
   transform: translateZ(0); /* Force own compositing layer */
 }
 
-/* Stronger frosted glass for navbar - more blur, lighter tint */
-.frosted-glass-nav {
-  -webkit-backdrop-filter: blur(20px) saturate(10%);
-  backdrop-filter: blur(20px) saturate(180%);
-  transform: translateZ(0);
-}
-
 /* Grainy glass - frosted glass with subtle noise texture overlay */
 .grainy-glass {
   position: relative;
@@ -136,6 +129,19 @@
   mask-composite: exclude;
   animation: border-ray-spin 1.5s linear infinite;
   pointer-events: none;
+}
+
+/* Respect the OS "reduce motion" setting for CSS animations (Radix enter/exit,
+   reconnect ring, transitions). Framer Motion is covered by <MotionConfig>. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Hide scrollbars in app layout - scroll still works */

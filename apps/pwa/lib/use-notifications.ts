@@ -3,7 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { NotificationPayload } from "models";
 import { useSetPushResubscriptionRequired } from "@/app/(app)/context/push-resubscription-context";
-import { invalidateForNotification } from "@/src/lib/invalidate-notification";
+import {
+  invalidateAfterReconnect,
+  invalidateForNotification,
+} from "@/src/lib/invalidate-notification";
 import {
   realtimeManager,
   type ConnectionState,
@@ -52,8 +55,13 @@ export function useNotifications(enabled: boolean): ConnectionState {
       },
     );
 
+    let previousState = realtimeManager.getState();
     const unsubscribeState = realtimeManager.addStateListener(
       (state: ConnectionState) => {
+        if (state === "connected" && previousState === "reconnecting") {
+          invalidateAfterReconnect(queryClientRef.current);
+        }
+        previousState = state;
         setConnectionState(state);
       },
     );

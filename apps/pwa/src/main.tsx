@@ -9,8 +9,10 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: "intent",
-  defaultPendingMs: 0,
-  defaultPendingMinMs: 0,
+  // The document never scrolls (body is overflow:hidden); the app shell's
+  // <main> does. Reset it on push navigation and restore it on back/forward.
+  scrollRestoration: true,
+  scrollToTopSelectors: ['[data-scroll-restoration-id="app-main"]'],
 });
 
 declare module "@tanstack/react-router" {

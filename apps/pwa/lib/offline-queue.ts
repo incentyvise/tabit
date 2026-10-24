@@ -7,14 +7,7 @@ export type OfflineActionType =
   | "accept_friend_request"
   | "reject_friend_request"
   | "accept_tab_invite"
-  | "reject_tab_invite"
-  | "expense_create"
-  | "expense_update"
-  | "expense_delete"
-  | "expense_restore"
-  | "settlement_create"
-  | "settlement_update"
-  | "settlement_delete";
+  | "reject_tab_invite";
 
 export type OfflineAction = {
   id: string;

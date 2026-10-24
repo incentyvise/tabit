@@ -28,6 +28,7 @@ import {
   formatAppDate,
   formatAppDateTime,
 } from "@/lib/format-date";
+import { invalidateTabData, settlementAuditLogQuery, settlementQuery, tabQuery } from "@/lib/queries";
 
 export function SettlementPage() {
   const { tabId, settlementId } = useParams<{
@@ -44,30 +45,14 @@ export function SettlementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const { data: settlement, isPending: settlementPending } = useQuery({
-    queryKey: ["settlement", tabIdOrEmpty, settlementIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.settlements.get(tabIdOrEmpty, settlementIdOrEmpty);
-      return r.success && r.settlement ? r.settlement : null;
-    },
-    enabled: !!tabIdOrEmpty && !!settlementIdOrEmpty,
-  });
+  const { data: settlement, isPending: settlementPending } = useQuery(
+    settlementQuery(tabIdOrEmpty, settlementIdOrEmpty),
+  );
 
-  const { data: tab } = useQuery({
-    queryKey: ["tab", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.get(tabIdOrEmpty);
-      return r.success && r.tab ? r.tab : null;
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: tab } = useQuery(tabQuery(tabIdOrEmpty));
 
   const { data: auditLog } = useQuery({
-    queryKey: ["settlementAuditLog", tabIdOrEmpty, settlementIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.settlements.getAuditLog(tabIdOrEmpty, settlementIdOrEmpty);
-      return r.success ? (r.auditLog ?? []) : [];
-    },
+    ...settlementAuditLogQuery(tabIdOrEmpty, settlementIdOrEmpty),
     enabled: !!tabIdOrEmpty && !!settlementIdOrEmpty && !!settlement,
   });
 
@@ -165,10 +150,9 @@ export function SettlementPage() {
     setDeleteLoading(true);
     const result = await api.settlements.delete(tabIdOrEmpty, settlementIdOrEmpty);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["settlements", tabIdOrEmpty] });
-      queryClient.invalidateQueries({ queryKey: ["expenses", tabIdOrEmpty] });
-      queryClient.invalidateQueries({ queryKey: ["balances", tabIdOrEmpty] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      void invalidateTabData(queryClient, tabIdOrEmpty, {
+        settlementId: settlementIdOrEmpty,
+      });
       toast.success("Settlement deleted");
       navigate(`/tabs/${tabIdOrEmpty}`);
     } else {
@@ -319,19 +303,8 @@ export function SettlementPage() {
               members={tab?.members ?? []}
               participants={tab?.participants ?? []}
               currentUserId={currentUserId}
-              onSuccess={() => {
-                setEditDialogOpen(false);
-                queryClient.invalidateQueries({
-                  queryKey: [
-                    "settlementAuditLog",
-                    tabIdOrEmpty,
-                    settlementIdOrEmpty,
-                  ],
-                });
-                queryClient.invalidateQueries({
-                  queryKey: ["settlement", tabIdOrEmpty, settlementIdOrEmpty],
-                });
-              }}
+              // EditSettlementForm invalidates the tab ledger + this settlement.
+              onSuccess={() => setEditDialogOpen(false)}
               onDeleteSuccess={() => navigate(`/tabs/${tabIdOrEmpty}`)}
             />
           </DialogContent>

@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import {
   useInfiniteQuery,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import {
+  balancesQuery,
+  expenseListQuery,
+  settlementsQuery,
+  sharedGroupTabsQuery,
+  tabQuery,
+} from "@/lib/queries";
 import { authClient } from "@/lib/auth-client";
 import { useParams, Link } from "@/lib/navigation";
 import { useNavTitle } from "../../context/nav-title-context";
@@ -38,7 +44,7 @@ import {
 } from "@/components/page-skeletons";
 import { TabExpensesChart } from "@/components/tab-expenses-chart";
 import { motion } from "framer-motion";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { STAGGER_LIMIT, staggerContainer, staggerItem, useListEntrance } from "@/lib/animations";
 import { AnimatedCard } from "@/components/motion/animated-card";
 import { formatAmount } from "@/lib/format-amount";
 import { TabExpenseCard } from "@/components/tab-expense-card";
@@ -66,6 +72,8 @@ function balancePartyLabel(
 function balanceAvatarSeed(b: Balance): string {
   return b.userId ?? b.participantId;
 }
+
+const EMPTY_PARTICIPANTS: never[] = [];
 
 export function TabPage() {
   const { tabId } = useParams<{ tabId: string }>();
@@ -95,54 +103,40 @@ export function TabPage() {
     setDebouncedSearch("");
   };
 
-  const { data: tab, isPending: tabPending } = useQuery({
-    queryKey: ["tab", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.get(tabIdOrEmpty);
-      return r.success && r.tab ? r.tab : null;
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: tab, isPending: tabPending } = useQuery(
+    tabQuery(tabIdOrEmpty),
+  );
+  const listInitial = useListEntrance(`tab:${tabIdOrEmpty}`);
 
+  const expenseListOptions = expenseListQuery(
+    tabIdOrEmpty,
+    expenseFilter === "settlements" ? "all" : expenseFilter,
+    debouncedSearch,
+  );
+  const expensesEnabled =
+    !!tabIdOrEmpty &&
+    !!session?.user &&
+    (expenseFilter !== "settlements" || !!debouncedSearch);
   const {
     data: expensesData,
-    isLoading: expensesLoading,
+    isPending: expensesPending,
+    isPlaceholderData: expensesArePlaceholder,
+    isFetching: expensesFetching,
     isError: expensesError,
     fetchNextPage: fetchNextExpenses,
     hasNextPage: hasMoreExpenses,
     isFetchingNextPage: isLoadingMoreExpenses,
   } = useInfiniteQuery({
-    queryKey: ["expenses", tabIdOrEmpty, expenseFilter, debouncedSearch],
-    queryFn: async ({ pageParam }) => {
-      const r = await api.expenses.list(tabIdOrEmpty, {
-        limit: 20,
-        offset: pageParam,
-        filter: expenseFilter === "settlements" ? "all" : expenseFilter,
-        ...(debouncedSearch ? { search: debouncedSearch } : {}),
-      });
-      return r.success
-        ? { expenses: r.expenses ?? [], total: r.total ?? 0 }
-        : { expenses: [], total: 0 };
-    },
-    initialPageParam: 0,
-    placeholderData: (prev) => prev ?? { pages: [], pageParams: [0] },
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || !("total" in lastPage)) return undefined;
-      const pages = allPages ?? [];
-      const loaded = pages.reduce(
-        (sum, p) =>
-          sum + (p && "expenses" in p ? (p.expenses?.length ?? 0) : 0),
-        0,
-      );
-      return loaded < (lastPage as { total: number }).total
-        ? loaded
-        : undefined;
-    },
-    enabled:
-      !!tabIdOrEmpty &&
-      !!session?.user &&
-      (expenseFilter !== "settlements" || !!debouncedSearch),
+    ...expenseListOptions,
+    // Keep the previous filter/search results on screen while the next one
+    // loads — but never another tab's expenses.
+    placeholderData: (prev, prevQuery) =>
+      prevQuery?.queryKey[1] === tabIdOrEmpty ? prev : undefined,
+    enabled: expensesEnabled,
   });
+  const expensesLoading =
+    expensesEnabled &&
+    (expensesPending || (expensesArePlaceholder && expensesFetching));
   const rawExpenses = useMemo(() => {
     const flat = expensesData?.pages.flatMap((p) => p?.expenses ?? []) ?? [];
     const seen = new Set<string>();
@@ -169,23 +163,13 @@ export function TabPage() {
     });
   }, [rawExpenses, expenseFilter, currentUserId, debouncedSearch]);
 
-  const { data: settlements, isLoading: settlementsLoading } = useQuery({
-    queryKey: ["settlements", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.settlements.list(tabIdOrEmpty);
-      return r.success ? (r.settlements ?? []) : [];
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: settlements, isLoading: settlementsLoading } = useQuery(
+    settlementsQuery(tabIdOrEmpty),
+  );
 
-  const { data: balances, isPending: balancesPending } = useQuery({
-    queryKey: ["balances", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.getBalances(tabIdOrEmpty);
-      return r.success ? (r.balances ?? []) : [];
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: balances, isPending: balancesPending } = useQuery(
+    balancesQuery(tabIdOrEmpty),
+  );
 
   const tabCurrency = tab?.currency ?? "USD";
 
@@ -263,11 +247,7 @@ export function TabPage() {
   const groupHasSingleCounterparty = groupMyDebtRows.length === 1;
 
   const { data: sharedGroupTabs } = useQuery({
-    queryKey: ["sharedGroupTabs", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.getSharedGroupTabs(tabIdOrEmpty);
-      return r.success ? (r.tabs ?? []) : [];
-    },
+    ...sharedGroupTabsQuery(tabIdOrEmpty),
     enabled: !!tabIdOrEmpty && tab?.isDirect === true,
   });
 
@@ -299,8 +279,16 @@ export function TabPage() {
     }
     return map;
   }, [tab?.members]);
-  const getMemberUser = (userId: string) =>
-    membersByUserId.get(userId) ?? { id: userId };
+  // Stable references: the expenses chart re-runs (and re-animates) whenever
+  // these change identity.
+  const getMemberUser = useCallback(
+    (userId: string) => membersByUserId.get(userId) ?? { id: userId },
+    [membersByUserId],
+  );
+  const tabParticipants = useMemo(
+    () => tab?.participants ?? EMPTY_PARTICIPANTS,
+    [tab?.participants],
+  );
   const otherMember = tab?.members?.find(
     (m) => m.userId !== currentUserId,
   )?.user;
@@ -779,7 +767,7 @@ export function TabPage() {
           tabCurrency={tabCurrency}
           currentUserId={currentUserId}
           getMemberUser={getMemberUser}
-          participants={tab.participants ?? []}
+          participants={tabParticipants}
         />
 
         {tab.isDirect && (
@@ -875,12 +863,7 @@ export function TabPage() {
                 variant="outline"
                 onClick={() => {
                   queryClient.resetQueries({
-                    queryKey: [
-                      "expenses",
-                      tabIdOrEmpty,
-                      expenseFilter,
-                      debouncedSearch,
-                    ],
+                    queryKey: expenseListOptions.queryKey,
                   });
                 }}
               >
@@ -902,14 +885,13 @@ export function TabPage() {
             </p>
           ) : (
             <motion.div
-              key={`${expenseFilter}-${debouncedSearch}`}
               className="flex flex-col gap-4"
               variants={staggerContainer}
-              initial="initial"
+              initial={listInitial}
               animate="animate"
             >
               {expensesAndSettlements.map((item, i) => {
-                const shouldAnimate = i < 8;
+                const shouldAnimate = i < STAGGER_LIMIT;
                 return item.type === "expense" ? (
                   <motion.div
                     key={`exp-${item.id}`}

@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import { CalendarRange, ChartColumnIncreasing, ChartPie } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { api } from "@/lib/api-client";
 import { formatCompactAmount } from "@/lib/format-amount";
 import {
   buildTabExpensesChartData,
@@ -39,6 +38,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { expensesChartQuery } from "@/lib/queries";
 
 export type TabExpensesChartType = "stacked-bar" | "donut";
 
@@ -165,14 +165,7 @@ export function TabExpensesChart({
   const [chartType, setChartType] =
     useState<TabExpensesChartType>("stacked-bar");
 
-  const { data: expenses, isLoading } = useQuery({
-    queryKey: ["expenses-chart", tabId],
-    queryFn: async () => {
-      const r = await api.expenses.list(tabId, { filter: "all" });
-      return r.success ? (r.expenses ?? []) : [];
-    },
-    enabled: !!tabId,
-  });
+  const { data: expenses, isLoading } = useQuery(expensesChartQuery(tabId));
 
   const hasAnyExpenses = useMemo(
     () => (expenses ?? []).some((expense) => !expense.deletedAt),

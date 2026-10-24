@@ -25,12 +25,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TabListSkeleton } from "@/components/page-skeletons";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { staggerContainer, staggerItemAt, useListEntrance } from "@/lib/animations";
 import { AnimatedCard } from "@/components/motion/animated-card";
 import { PokeIcon } from "@/components/icons/poke-icon";
 import { TabListItem } from "@/components/tab-list-item";
 import { authClient } from "@/lib/auth-client";
 import { SortDesc } from "lucide-react";
+import { friendsQuery, invalidateMembership, pendingFriendRequestsQuery, queryKeys } from "@/lib/queries";
 
 type FriendSort = "expenses" | "recent" | "name";
 
@@ -54,13 +55,15 @@ export function FriendsPage() {
   const [sortBy, setSortBy] = useState<FriendSort>("expenses");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const listInitial = useListEntrance("friends");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
-  const { data: friendsData, isPending: friendsPending } = useQuery({
-    queryKey: ["friends"],
-    queryFn: async () => {
-      const r = await api.friends.list();
-      return (r.success ? r.friends : []) as Array<{
+  const { data: friendsData, isPending: friendsPending } = useQuery(
+    friendsQuery(),
+  );
+  const friends = useMemo(
+    () =>
+      (friendsData ?? []) as Array<{
         id: string;
         currency?: string;
         balance: number;
@@ -72,10 +75,9 @@ export function FriendsPage() {
           name: string | null;
           username: string | null;
         };
-      }>;
-    },
-  });
-  const friends = useMemo(() => friendsData ?? [], [friendsData]);
+      }>,
+    [friendsData],
+  );
   const sortedFriends = useMemo(() => {
     const arr = [...friends];
     if (sortBy === "name") {
@@ -97,28 +99,24 @@ export function FriendsPage() {
     }
     return arr;
   }, [friends, sortBy]);
-  const { data: requestsData, isLoading: requestsLoading } = useQuery({
-    queryKey: ["pendingFriendRequests"],
-    queryFn: async () => {
-      const r = await api.friends.getPendingRequests();
-      return r.success ? r.requests : [];
-    },
-  });
+  const { data: requestsData, isLoading: requestsLoading } = useQuery(
+    pendingFriendRequestsQuery(),
+  );
   const pendingRequests = requestsData ?? [];
 
   async function handleAccept(requestId: string) {
     const result = await api.friends.acceptRequest(requestId);
     if (result.success && result.friendTabId) {
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
-      queryClient.invalidateQueries({ queryKey: ["tabs"] });
-      queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
+      void invalidateMembership(queryClient);
       navigate(`/tabs/${result.friendTabId}`);
     }
   }
 
   async function handleReject(requestId: string) {
     await api.friends.rejectRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.pendingFriendRequests,
+    });
     setRejectRequestId(null);
   }
 
@@ -308,11 +306,11 @@ export function FriendsPage() {
             <motion.div
               className="flex flex-col gap-3"
               variants={staggerContainer}
-              initial="initial"
+              initial={listInitial}
               animate="animate"
             >
-              {sortedFriends.map((f) => (
-                <motion.div key={f.id} variants={staggerItem}>
+              {sortedFriends.map((f, i) => (
+                <motion.div key={f.id} variants={staggerItemAt(i)}>
                   <AnimatedCard>
                     <TabListItem
                       item={{

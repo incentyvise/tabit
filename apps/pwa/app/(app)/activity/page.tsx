@@ -1,6 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import useInfiniteScroll from "react-infinite-scroll-hook";
-import { api } from "@/lib/api-client";
 import type { ActivityItem } from "@/lib/domain-types";
 import { authClient } from "@/lib/auth-client";
 import { Link } from "@/lib/navigation";
@@ -10,7 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import { ActivityListSkeleton } from "@/components/page-skeletons";
 import { motion } from "framer-motion";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { STAGGER_LIMIT, staggerContainer, staggerItem, useListEntrance } from "@/lib/animations";
 import { AnimatedCard } from "@/components/motion/animated-card";
 import { useMemo } from "react";
 import {
@@ -20,9 +19,11 @@ import {
 import { cn } from "@/lib/utils";
 import { ExpenseYourBalance } from "@/components/expense-your-balance";
 import { formatAppDate } from "@/lib/format-date";
+import { activityQuery, queryKeys } from "@/lib/queries";
 
 export function ActivityPage() {
   const queryClient = useQueryClient();
+  const listInitial = useListEntrance("activity");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
 
@@ -35,23 +36,8 @@ export function ActivityPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["activity"],
-    queryFn: async ({ pageParam }) => {
-      const r = await api.activity.list({ limit: 20, offset: pageParam });
-      return r.success
-        ? { items: r.items ?? [], total: r.total ?? 0 }
-        : { items: [], total: 0 };
-    },
-    initialPageParam: 0,
+    ...activityQuery(),
     enabled: !!session?.user,
-    getNextPageParam: (lastPage, allPages) => {
-      if (typeof lastPage?.total !== "number") return undefined;
-      const loaded = (allPages ?? []).reduce(
-        (sum, p) => sum + (Array.isArray(p?.items) ? p.items.length : 0),
-        0,
-      );
-      return loaded < lastPage.total ? loaded : undefined;
-    },
   });
 
   const items = useMemo((): ActivityItem[] => {
@@ -92,7 +78,7 @@ export function ActivityPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  queryClient.resetQueries({ queryKey: ["activity"] });
+                  queryClient.resetQueries({ queryKey: queryKeys.activity });
                 }}
               >
                 Retry
@@ -108,11 +94,11 @@ export function ActivityPage() {
             <motion.div
               className="flex flex-col gap-3"
               variants={staggerContainer}
-              initial="initial"
+              initial={listInitial}
               animate="animate"
             >
               {items.map((item, i) => {
-                const shouldAnimate = i < 8;
+                const shouldAnimate = i < STAGGER_LIMIT;
                 if (item.type === "expense") {
                   const payerAvatarSeed =
                     item.paidById ??

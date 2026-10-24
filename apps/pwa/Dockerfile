@@ -1,28 +1,31 @@
-# Stage 1: Prepare - prune monorepo for pwa only
-FROM node:26-alpine AS prepare
-RUN npm install -g pnpm@10.32.1
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+# syntax=docker/dockerfile:1.7
+
+FROM node:26-alpine AS base
+ENV PNPM_HOME="/pnpm" \
+    PATH="/pnpm:$PATH" \
+    CI=true
+RUN npm install -g pnpm@10.32.1 turbo@2.8.13 && npm cache clean --force
 WORKDIR /app
 
-RUN pnpm add -g turbo@^2
-
+# Stage 1: Prune monorepo for pwa only
+FROM base AS prepare
 COPY . .
 RUN turbo prune pwa --docker
 
 # Stage 2: Install dependencies + build (Vite bakes VITE_* / NEXT_PUBLIC_* at build time)
-FROM node:26-alpine AS builder
-RUN apk add --no-cache curl gnupg \
-    && curl -sLf --retry 3 https://cli.doppler.com/install.sh | sh
-RUN npm install -g pnpm@10.32.1
-WORKDIR /app
+FROM base AS builder
+RUN apk add --no-cache --virtual .doppler-deps curl gnupg \
+    && curl -sLf --retry 3 https://cli.doppler.com/install.sh | sh \
+    && apk del .doppler-deps
 
 COPY --from=prepare /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir /pnpm/store
 
 COPY --from=prepare /app/out/full/ .
 
 # Prefer Doppler (DOPPLER_TOKEN_PWA → DOPPLER_TOKEN). Fallback build args for local builds without Doppler.
+# Build ARGs are exported to RUN as env vars (so Vite sees them) without being persisted in an image.
 ARG DOPPLER_TOKEN=
 ARG NEXT_PUBLIC_PWA_URL=
 ARG VITE_API_URL=
@@ -35,18 +38,6 @@ ARG OTEL_SERVICE_NAME=
 ARG TURBO_TEAM
 ARG TURBO_TOKEN
 
-ENV NEXT_PUBLIC_PWA_URL=$NEXT_PUBLIC_PWA_URL
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_REALTIME_URL=$VITE_REALTIME_URL
-ENV NEXT_PUBLIC_DONATE_URL=$NEXT_PUBLIC_DONATE_URL
-ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
-ENV OTEL_EXPORTER_OTLP_ENDPOINT=$OTEL_EXPORTER_OTLP_ENDPOINT
-ENV OTEL_EXPORTER_OTLP_HEADERS=$OTEL_EXPORTER_OTLP_HEADERS
-ENV OTEL_SERVICE_NAME=$OTEL_SERVICE_NAME
-ENV TURBO_TEAM=$TURBO_TEAM
-ENV TURBO_TOKEN=$TURBO_TOKEN
-ENV DOPPLER_TOKEN=$DOPPLER_TOKEN
-
 RUN if [ -n "$DOPPLER_TOKEN" ]; then \
       doppler run -- pnpm exec turbo build --filter=pwa...; \
     else \
@@ -54,12 +45,12 @@ RUN if [ -n "$DOPPLER_TOKEN" ]; then \
     fi
 
 # Stage 3: Production (static — no Doppler at runtime)
-FROM nginx:1.27-alpine AS prod
-WORKDIR /usr/share/nginx/html
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
 
-COPY --from=builder /app/apps/pwa/dist .
 COPY apps/pwa/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/apps/pwa/dist /usr/share/nginx/html
 
 EXPOSE 3003
 
-CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1:3003/healthz || exit 1

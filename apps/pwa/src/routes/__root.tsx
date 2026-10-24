@@ -15,9 +15,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-  useEffect(() => {
-    registerOfflineSyncListeners();
-  }, []);
+  useEffect(() => registerOfflineSyncListeners(), []);
 
   return (
     <Providers>

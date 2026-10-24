@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, Link } from "@/lib/navigation";
+import { useGoBack, useParams, Link } from "@/lib/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useNavTitle } from "../../../context/nav-title-context";
@@ -18,25 +18,18 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { queryKeys, recurringExpenseQuery } from "@/lib/queries";
 
 export function RecurringExpenseRulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const id = ruleId ?? "";
   const setNavTitle = useNavTitle();
   const queryClient = useQueryClient();
+  const goBack = useGoBack();
   const [status, setStatus] = useState<string>("active");
   const [saving, setSaving] = useState(false);
 
-  const { data, isPending, error } = useQuery({
-    queryKey: ["recurring-expense", id],
-    queryFn: async () => {
-      const r = await api.recurringExpenses.get(id);
-      if (!r.success) throw new Error(r.error);
-      if (!r.rule) throw new Error("Failed to load");
-      return r.rule;
-    },
-    enabled: !!id,
-  });
+  const { data, isPending, error } = useQuery(recurringExpenseQuery(id));
 
   useEffect(() => {
     setNavTitle?.({ title: "Recurring expense", backHref: "/tabs" });
@@ -57,7 +50,9 @@ export function RecurringExpenseRulePage() {
     setSaving(false);
     if (r.success) {
       toast.success("Saved");
-      void queryClient.invalidateQueries({ queryKey: ["recurring-expense", id] });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.recurringExpense(id),
+      });
     } else {
       toast.error(r.error ?? "Save failed");
     }
@@ -70,7 +65,8 @@ export function RecurringExpenseRulePage() {
     const r = await api.recurringExpenses.delete(id);
     if (r.success) {
       toast.success("Rule deleted");
-      window.history.back();
+      queryClient.removeQueries({ queryKey: queryKeys.recurringExpense(id) });
+      goBack("/tabs");
     } else {
       toast.error(r.error ?? "Delete failed");
     }

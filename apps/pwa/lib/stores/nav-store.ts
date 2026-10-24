@@ -25,6 +25,12 @@ function getDefaultNavConfig(pathname: string): NavTitleConfig | null | undefine
   return undefined;
 }
 
+function getParentPath(pathname: string): string {
+  const tabDetail = pathname.match(/^\/tabs\/[^/]+(?=\/.)/);
+  if (tabDetail) return tabDetail[0];
+  return "/tabs";
+}
+
 interface NavState {
   displayPathname: string;
   navPage: NavTitleConfig | null;
@@ -41,10 +47,14 @@ export const useNavStore = create<NavState>((set) => ({
       if (known !== undefined) {
         return { displayPathname: pathname, navPage: known };
       }
-      // Dynamic route: drop stale title from the previous page.
+      // Dynamic route: drop the previous page's title but show a back button
+      // right away; the page fills in its title once its data loads.
       return {
         displayPathname: pathname,
-        navPage: state.displayPathname !== pathname ? null : state.navPage,
+        navPage:
+          state.displayPathname !== pathname
+            ? { title: "", backHref: getParentPath(pathname) }
+            : state.navPage,
       };
     }),
   setNavPage: (config) => set({ navPage: config }),

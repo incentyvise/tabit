@@ -14,11 +14,12 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth-client";
 import { motion } from "framer-motion";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { staggerContainer, staggerItemAt, useListEntrance } from "@/lib/animations";
 import { AnimatedCard } from "@/components/motion/animated-card";
 import { TabListItem } from "@/components/tab-list-item";
 import { TabListSkeleton } from "@/components/page-skeletons";
 import { formatAppDate } from "@/lib/format-date";
+import { invalidateMembership, pendingTabInviteRequestsQuery, queryKeys, tabsQuery } from "@/lib/queries";
 
 type TabSort = "expenses" | "recent" | "name";
 
@@ -26,6 +27,7 @@ export function TabsPage() {
   const [sortBy, setSortBy] = useState<TabSort>("expenses");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const listInitial = useListEntrance("tabs");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
   type TabItem = {
@@ -47,14 +49,8 @@ export function TabsPage() {
     createdAt: string;
   };
 
-  const { data: tabsData, isPending: tabsPending } = useQuery({
-    queryKey: ["tabs"],
-    queryFn: async () => {
-      const r = await api.tabs.list();
-      return (r.success ? r.tabs : []) as TabItem[];
-    },
-  });
-  const tabs = useMemo(() => tabsData ?? [], [tabsData]);
+  const { data: tabsData, isPending: tabsPending } = useQuery(tabsQuery());
+  const tabs = useMemo(() => (tabsData ?? []) as TabItem[], [tabsData]);
   const sortedTabs = useMemo(() => {
     const arr = [...tabs];
     if (sortBy === "name") {
@@ -78,28 +74,22 @@ export function TabsPage() {
     }
     return arr;
   }, [tabs, sortBy]);
-  const { data: tabInvitesData } = useQuery({
-    queryKey: ["pendingTabInviteRequests"],
-    queryFn: async () => {
-      const r = await api.tabInvites.getPendingRequests();
-      return (r.success ? r.requests : []) as unknown as TabInviteItem[];
-    },
-  });
-  const pendingTabInvites = tabInvitesData ?? [];
+  const { data: tabInvitesData } = useQuery(pendingTabInviteRequestsQuery());
+  const pendingTabInvites = (tabInvitesData ?? []) as unknown as TabInviteItem[];
 
   async function handleAcceptTabInvite(requestId: string) {
     const result = await api.tabInvites.acceptRequest(requestId);
     if (result.success && result.tabId) {
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
-      queryClient.invalidateQueries({ queryKey: ["tabs"] });
-      queryClient.invalidateQueries({ queryKey: ["pendingTabInviteRequests"] });
+      void invalidateMembership(queryClient);
       navigate(`/tabs/${result.tabId}`);
     }
   }
 
   async function handleRejectTabInvite(requestId: string) {
     await api.tabInvites.rejectRequest(requestId);
-    queryClient.invalidateQueries({ queryKey: ["pendingTabInviteRequests"] });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.pendingTabInviteRequests,
+    });
   }
 
   return (
@@ -204,11 +194,11 @@ export function TabsPage() {
             <motion.div
               className="flex flex-col gap-3"
               variants={staggerContainer}
-              initial="initial"
+              initial={listInitial}
               animate="animate"
             >
-              {sortedTabs.map((t) => (
-                <motion.div key={t.id} variants={staggerItem}>
+              {sortedTabs.map((t, i) => (
+                <motion.div key={t.id} variants={staggerItemAt(i)}>
                   <AnimatedCard>
                     <TabListItem
                       item={{
