@@ -3,48 +3,33 @@ import { createFullId, parseCorsOrigins } from "shared";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, admin } from "better-auth/plugins";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import PlunkModule from "@plunk/node";
+import { SequenzyClient } from "sequenzy";
 import { db, user, session, account, verification } from "db";
 import { debug, log } from "otel";
 import { sendDiscordWebhook } from "shared";
 
 const appName = process.env.APP_NAME ?? "Tab";
-const plunkSecret = process.env.PLUNK_SECRET_KEY;
-const plunkBaseUrl = process.env.PLUNK_BASE_URL;
+const sequenzyApiKey = process.env.SEQUENZY_API_KEY;
+const sequenzy = sequenzyApiKey ? new SequenzyClient({ apiKey: sequenzyApiKey }) : null;
 
-const PlunkClass =
-  (
-    PlunkModule as unknown as {
-      default?: new (
-        key: string,
-        opts?: { baseUrl: string },
-      ) => {
-        emails: {
-          send: (opts: {
-            to: string;
-            subject: string;
-            body: string;
-          }) => Promise<unknown>;
-        };
-      };
-    }
-  ).default ??
-  (PlunkModule as unknown as new (
-    key: string,
-    opts?: { baseUrl: string },
-  ) => {
-    emails: {
-      send: (opts: {
-        to: string;
-        subject: string;
-        body: string;
-      }) => Promise<unknown>;
-    };
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function sendEmail(
+  client: SequenzyClient,
+  opts: { to: string; subject: string; text: string },
+): Promise<void> {
+  await client.transactional.send({
+    to: opts.to,
+    subject: opts.subject,
+    body: escapeHtml(opts.text).replace(/\n/g, "<br>"),
+    idempotencyKey: crypto.randomUUID(),
   });
-const plunk =
-  plunkSecret && plunkBaseUrl
-    ? new PlunkClass(plunkSecret, { baseUrl: plunkBaseUrl })
-    : null;
+}
 
 function emailDomain(email: string): string {
   const at = email.lastIndexOf("@");
@@ -153,31 +138,31 @@ export const auth = betterAuth({
       sendVerificationOTP: async ({ email, otp, type }) => {
         const send = async () => {
           if (type === "sign-in") {
-            if (plunk) {
-              await plunk.emails.send({
+            if (sequenzy) {
+              await sendEmail(sequenzy, {
                 to: email,
                 subject: `Sign in to ${appName}: ${otp}`,
-                body: `Your sign-in code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
+                text: `Your sign-in code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
               });
             } else {
               logOtpToConsole(type, email, otp);
             }
           } else if (type === "email-verification") {
-            if (plunk) {
-              await plunk.emails.send({
+            if (sequenzy) {
+              await sendEmail(sequenzy, {
                 to: email,
                 subject: `Verify your email for ${appName}: ${otp}`,
-                body: `Your verification code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
+                text: `Your verification code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
               });
             } else {
               logOtpToConsole(type, email, otp);
             }
           } else {
-            if (plunk) {
-              await plunk.emails.send({
+            if (sequenzy) {
+              await sendEmail(sequenzy, {
                 to: email,
                 subject: `Reset your password for ${appName}`,
-                body: `Your password reset code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
+                text: `Your password reset code for ${appName} is: ${otp}\n\nThis code expires in 5 minutes.`,
               });
             } else {
               logOtpToConsole(type, email, otp);

@@ -72,7 +72,7 @@ pnpm build --filter=models --filter=db
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env with DATABASE_URL, BETTER_AUTH_SECRET, PLUNK_SECRET_KEY, CORS_ORIGIN, etc.
+# Edit .env with DATABASE_URL, BETTER_AUTH_SECRET, SEQUENZY_API_KEY, CORS_ORIGIN, etc.
 
 # 4. Run migrations
 cd packages/db && pnpm db:push
@@ -98,7 +98,7 @@ Deploy Tab on your own infrastructure. You provide PostgreSQL; Docker Compose ru
 
 - Docker and Docker Compose
 - PostgreSQL database (managed service like Neon, Supabase, or self-hosted)
-- Email service for magic links (Plunk, Resend, or similar)
+- Email service for magic links (Sequenzy)
 - Domain name (optional but recommended for production)
 
 ### Step 1: Clone and Configure
@@ -118,8 +118,7 @@ Edit `.env` with your values. Required variables:
 | `DATABASE_URL`              | PostgreSQL connection string                      |
 | `BETTER_AUTH_SECRET`        | Secret for auth (min 32 characters)               |
 | `VITE_BACKEND_URL`          | Backend API URL (e.g. https://api.yourdomain.com) |
-| `PLUNK_SECRET_KEY`          | Plunk API key for magic link emails               |
-| `PLUNK_BASE_URL`            | Plunk API base URL                                |
+| `SEQUENZY_API_KEY`          | Sequenzy API key for OTP emails                   |
 | `CORS_ORIGIN`               | Allowed origins for API (your PWA URL)            |
 | `NEXT_PUBLIC_PWA_URL`       | Public PWA URL                                    |
 | `VITE_NOTIFICATIONS_WS_URL` | WebSocket URL (e.g. wss://ws.yourdomain.com)      |
@@ -277,13 +276,13 @@ graph TB
 **Integrations**
 
 - Google Gemini for AI expense parsing
-- Plunk for transactional emails
+- Sequenzy for transactional emails
 
 ## Open Source Shoutouts
 
 Tab and related projects (Snitchfeed, Conncord) are built with and deployed using these open source tools:
 
-- [Plunk](https://useplunk.com/) - Open-source email platform for transactional emails, marketing, and automation. Self-hostable, transparent pricing.
+- [Sequenzy](https://sequenzy.com/) - Email platform for transactional and marketing email.
 - [SigNoz](https://signoz.io) - Open-source observability platform. Logs, traces, and metrics in one place.
 - [Dokploy](https://dokploy.com) - Self-hosted PaaS for deploying applications with Docker Compose.
 - [Bull Board](https://github.com/felixmosh/bull-board) - Queue background jobs inspector for Bull and BullMQ.

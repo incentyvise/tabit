@@ -10,10 +10,11 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@plunk/node": "^3.0.3",
     "better-auth": "^1.0.0",
+    "better-call": "1.3.2",
     "db": "workspace:*",
     "otel": "workspace:*",
+    "sequenzy": "^2.1.23",
     "shared": "workspace:*"
   },
   "devDependencies": {
