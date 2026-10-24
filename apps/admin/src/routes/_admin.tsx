@@ -131,7 +131,10 @@ function Shell({ email }: { email: string }) {
           </Button>
           <span className="font-semibold">Tab Admin</span>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main
+          data-scroll-restoration-id="admin-main"
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
           <div className="mx-auto max-w-7xl p-4 md:p-8">
             <Outlet />
           </div>

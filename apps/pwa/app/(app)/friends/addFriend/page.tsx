@@ -17,20 +17,14 @@ import { UserAvatar } from "@/components/user-avatar";
 import { QRSkeleton } from "@/components/page-skeletons";
 import { appConfig } from "@/src/config";
 import QRCode from "qrcode";
+import { friendTokenQuery } from "@/lib/queries";
+import { queryKeys } from "@/lib/queries";
 
 function MyQRCode() {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["friendToken"],
-    queryFn: async () => {
-      const result = await api.friends.getToken();
-      if (!result.success) throw new Error(result.error);
-      if (!result.url) throw new Error("Failed to load");
-      return result.url;
-    },
-  });
+  const { data, isLoading, error } = useQuery(friendTokenQuery());
 
   const url = data ?? null;
 
@@ -190,7 +184,7 @@ export function AddFriendPage() {
       setSearchResults((prev) =>
         prev.filter((u) => u.username !== targetUsername),
       );
-      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.friends });
     } else {
       setError(result.error ?? "Failed to send request");
     }

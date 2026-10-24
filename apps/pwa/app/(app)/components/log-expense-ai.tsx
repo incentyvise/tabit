@@ -19,6 +19,7 @@ import {
   ExpenseAddedDialog,
   type ExpenseCreatedCloseReason,
 } from "@/components/expense-added-dialog";
+import { invalidateTabData } from "@/lib/queries";
 
 type LogExpenseAIProps = {
   onSuccess: () => void;
@@ -155,15 +156,7 @@ export function LogExpenseAI({
             currency: result.currency,
             participants: result.participants ?? [],
           });
-          queryClient.invalidateQueries({ queryKey: ["friends"] });
-          queryClient.invalidateQueries({ queryKey: ["tabs"] });
-          queryClient.invalidateQueries({
-            predicate: (q) => q.queryKey[0] === "expenses",
-          });
-          queryClient.invalidateQueries({
-            predicate: (q) => q.queryKey[0] === "balances",
-          });
-          queryClient.invalidateQueries({ queryKey: ["activity"] });
+          if (result.tabId) void invalidateTabData(queryClient, result.tabId);
           setAiInputText("");
         } else if (!result.success) {
           setAiError(result.error);

@@ -68,6 +68,7 @@ import {
   MakeRecurringExpenseDialog,
   type RecurringTemplatePayload,
 } from "@/components/make-recurring-expense-dialog";
+import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -442,13 +443,7 @@ export function AddExpenseForm({
         }
         setSplitConfig(null);
         setPendingRecurring(null);
-        queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["recurring-expenses", tabId],
-        });
+        void invalidateTabData(queryClient, tabId);
         onExpenseCreated?.();
         setCreatedExpense({
           expenseId: result.expenseId,
@@ -474,13 +469,7 @@ export function AddExpenseForm({
         }
         setSplitConfig(null);
         setPendingRecurring(null);
-        queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["recurring-expenses", tabId],
-        });
+        void invalidateTabData(queryClient, tabId);
         onExpenseCreated?.();
         setPartialSuccessOpen(true);
         return;

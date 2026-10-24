@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
-import EmojiPicker, { Theme } from "emoji-picker-react";
+import type { Theme } from "emoji-picker-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   Popover,
@@ -15,6 +16,10 @@ import { api } from "@/lib/api-client";
 import type { ExpenseReaction } from "@/lib/domain-types";
 import { SmilePlus } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
+import { queryKeys } from "@/lib/queries";
+
+// ~300 KB: load only when a picker is opened, not with every expense list.
+const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
 function ReactionWhoReacted({
   emoji,
@@ -110,11 +115,14 @@ export function ExpenseReactions({
   const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const pickerTheme = resolvedTheme === "light" ? Theme.LIGHT : Theme.DARK;
+  const pickerTheme = (resolvedTheme === "light" ? "light" : "dark") as Theme;
 
+  // Reactions don't touch balances/totals: only the expense + list views.
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["expense", tabId, expenseId] });
-    queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.expense(tabId, expenseId),
+    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.expenseLists(tabId) });
   }
 
   async function handleReactionClick(emoji: string) {
@@ -227,12 +235,15 @@ export function ExpenseReactions({
               </Button>
             )}
             <div className="emoji-picker-app-theme min-w-0 overflow-hidden rounded-lg">
-              <EmojiPicker
-                theme={pickerTheme}
-                onEmojiClick={(data) => handleReactionClick(data.emoji)}
-                previewConfig={{ showPreview: false }}
-                width="100%"
-              />
+              <Suspense fallback={<Skeleton className="h-[450px] w-full" />}>
+                <EmojiPicker
+                  theme={pickerTheme}
+                  onEmojiClick={(data) => handleReactionClick(data.emoji)}
+                  previewConfig={{ showPreview: false }}
+                  lazyLoadEmojis
+                  width="100%"
+                />
+              </Suspense>
             </div>
           </div>
         </DialogContent>

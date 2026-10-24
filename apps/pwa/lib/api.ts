@@ -13,14 +13,22 @@ function errorMessage(err: unknown): string {
   return "Request failed";
 }
 
+/** HTTP status of a failed call; undefined for transport failures (offline, DNS, CORS, abort). */
+function errorStatus(err: unknown): number | undefined {
+  return err instanceof ORPCError ? err.status : undefined;
+}
+
 async function call<T extends Record<string, unknown>>(
   fn: () => Promise<T>,
-): Promise<({ success: true } & T) | { success: false; error: string }> {
+): Promise<
+  | ({ success: true } & T)
+  | { success: false; error: string; status?: number }
+> {
   try {
     const data = await fn();
     return { success: true, ...data };
   } catch (err) {
-    return { success: false, error: errorMessage(err) };
+    return { success: false, error: errorMessage(err), status: errorStatus(err) };
   }
 }
 

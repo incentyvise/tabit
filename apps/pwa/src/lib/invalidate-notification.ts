@@ -1,79 +1,77 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { NotificationPayload } from "models";
+import {
+  invalidateMembership,
+  invalidateTabData,
+  queryKeys,
+} from "@/lib/queries";
 
 export function invalidateForNotification(
   queryClient: QueryClient,
   payload: NotificationPayload,
 ): void {
-  if (payload.type === "friend_request") {
-    queryClient.invalidateQueries({
-      queryKey: ["pendingFriendRequests"],
-    });
-  } else if (payload.type === "tab_invite") {
-    queryClient.invalidateQueries({
-      queryKey: ["pendingTabInviteRequests"],
-    });
-  } else if (
-    payload.type === "friend_request_accepted" ||
-    payload.type === "tab_invite_accepted"
-  ) {
-    queryClient.invalidateQueries({ queryKey: ["friends"] });
-    queryClient.invalidateQueries({ queryKey: ["tabs"] });
-    if ("tabId" in payload && payload.tabId) {
-      queryClient.invalidateQueries({
-        queryKey: ["tab", payload.tabId],
+  switch (payload.type) {
+    case "friend_request":
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pendingFriendRequests,
       });
-      queryClient.invalidateQueries({
-        queryKey: ["members", payload.tabId],
+      return;
+    case "tab_invite":
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.pendingTabInviteRequests,
       });
-    }
-  } else if (
-    payload.type === "expense_added" ||
-    payload.type === "expense_updated" ||
-    payload.type === "expense_deleted" ||
-    payload.type === "expense_restored" ||
-    payload.type === "expense_reaction" ||
-    payload.type === "expenses_bulk_imported"
-  ) {
-    if ("tabId" in payload && payload.tabId) {
-      queryClient.invalidateQueries({
-        queryKey: ["expenses", payload.tabId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["balances", payload.tabId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["tab", payload.tabId],
-      });
-      if (
-        "expenseId" in payload &&
-        typeof payload.expenseId === "string" &&
-        payload.expenseId
-      ) {
-        queryClient.invalidateQueries({
-          queryKey: ["expense", payload.tabId, payload.expenseId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["expenseAuditLog", payload.tabId, payload.expenseId],
+      return;
+    case "friend_request_accepted":
+    case "tab_invite_accepted":
+      void invalidateMembership(queryClient);
+      if ("tabId" in payload && payload.tabId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.tab(payload.tabId),
         });
       }
+      return;
+    case "expense_reaction":
+      // Reactions don't change balances or totals: only refresh expense views.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.expenseLists(payload.tabId),
+      });
+      if (payload.expenseId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.expense(payload.tabId, payload.expenseId),
+        });
+      }
+      return;
+    case "expense_added":
+    case "expense_updated":
+    case "expense_deleted":
+    case "expense_restored":
+    case "expenses_bulk_imported":
+    case "placeholder_merged": {
+      const expenseId =
+        "expenseId" in payload && typeof payload.expenseId === "string"
+          ? payload.expenseId
+          : undefined;
+      void invalidateTabData(queryClient, payload.tabId, { expenseId });
+      return;
     }
-    queryClient.invalidateQueries({ queryKey: ["tabs"] });
-    queryClient.invalidateQueries({ queryKey: ["activity"] });
-  } else if (payload.type === "placeholder_merged") {
-    if ("tabId" in payload && payload.tabId) {
-      queryClient.invalidateQueries({ queryKey: ["tab", payload.tabId] });
-      queryClient.invalidateQueries({ queryKey: ["tabs"] });
-      queryClient.invalidateQueries({
-        queryKey: ["expenses", payload.tabId],
+    case "recurring_rule_needs_fix":
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.recurringExpense(payload.ruleId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["balances", payload.tabId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
-      queryClient.invalidateQueries({
-        queryKey: ["settlements", payload.tabId],
-      });
-    }
+      return;
+    default:
+      return;
   }
+}
+
+/**
+ * Events emitted while the socket was down are never replayed, so after a
+ * reconnect refetch whatever is on screen and mark the rest stale.
+ */
+export function invalidateAfterReconnect(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] !== "friendToken" &&
+      query.queryKey[0] !== "tabInviteToken",
+  });
 }

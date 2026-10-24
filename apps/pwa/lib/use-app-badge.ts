@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "@/lib/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "./api-client";
+import { pendingFriendRequestsQuery, pendingTabInviteRequestsQuery } from "@/lib/queries";
 
 function setBadge(count: number): void {
   if (typeof navigator === "undefined") return;
@@ -23,20 +23,12 @@ export function useAppBadge(enabled: boolean): void {
   const { pathname } = useLocation();
 
   const { data: friendRequestsData } = useQuery({
-    queryKey: ["pendingFriendRequests"],
-    queryFn: async () => {
-      const r = await api.friends.getPendingRequests();
-      return r.success ? r.requests : [];
-    },
+    ...pendingFriendRequestsQuery(),
     enabled,
   });
 
   const { data: tabInvitesData } = useQuery({
-    queryKey: ["pendingTabInviteRequests"],
-    queryFn: async () => {
-      const r = await api.tabInvites.getPendingRequests();
-      return r.success ? r.requests : [];
-    },
+    ...pendingTabInviteRequestsQuery(),
     enabled,
   });
 

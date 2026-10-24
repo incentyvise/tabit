@@ -42,6 +42,7 @@ import {
 } from "@/lib/format-date";
 import { ExpenseReactions } from "@/components/expense-reactions";
 import type { Expense as LedgerExpense } from "@/lib/domain-types";
+import { expenseAuditLogQuery, expenseQuery, invalidateTabData, tabQuery } from "@/lib/queries";
 
 export function ExpensePage() {
   const { tabId, expenseId } = useParams<{
@@ -60,30 +61,14 @@ export function ExpensePage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
 
-  const { data: expense, isPending: expensePending } = useQuery({
-    queryKey: ["expense", tabIdOrEmpty, expenseIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.expenses.get(tabIdOrEmpty, expenseIdOrEmpty);
-      return r.success && r.expense ? r.expense : null;
-    },
-    enabled: !!tabIdOrEmpty && !!expenseIdOrEmpty,
-  });
+  const { data: expense, isPending: expensePending } = useQuery(
+    expenseQuery(tabIdOrEmpty, expenseIdOrEmpty),
+  );
 
-  const { data: tab } = useQuery({
-    queryKey: ["tab", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.get(tabIdOrEmpty);
-      return r.success && r.tab ? r.tab : null;
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: tab } = useQuery(tabQuery(tabIdOrEmpty));
 
   const { data: auditLog } = useQuery({
-    queryKey: ["expenseAuditLog", tabIdOrEmpty, expenseIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.expenses.getAuditLog(tabIdOrEmpty, expenseIdOrEmpty);
-      return r.success ? (r.auditLog ?? []) : [];
-    },
+    ...expenseAuditLogQuery(tabIdOrEmpty, expenseIdOrEmpty),
     enabled: !!tabIdOrEmpty && !!expenseIdOrEmpty && !!expense,
   });
 
@@ -222,15 +207,9 @@ export function ExpensePage() {
     setDeleteLoading(true);
     const result = await api.expenses.delete(tabIdOrEmpty, expenseIdOrEmpty);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["expenses", tabIdOrEmpty] });
-      queryClient.invalidateQueries({ queryKey: ["balances", tabIdOrEmpty] });
-      queryClient.invalidateQueries({
-        queryKey: ["expense", tabIdOrEmpty, expenseIdOrEmpty],
+      void invalidateTabData(queryClient, tabIdOrEmpty, {
+        expenseId: expenseIdOrEmpty,
       });
-      queryClient.invalidateQueries({
-        queryKey: ["expenseAuditLog", tabIdOrEmpty, expenseIdOrEmpty],
-      });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
       toast.success("Expense deleted");
       navigate(`/tabs/${tabIdOrEmpty}`);
     } else {
@@ -243,15 +222,9 @@ export function ExpensePage() {
     setRestoreLoading(true);
     const result = await api.expenses.restore(tabIdOrEmpty, expenseIdOrEmpty);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["expenses", tabIdOrEmpty] });
-      queryClient.invalidateQueries({ queryKey: ["balances", tabIdOrEmpty] });
-      queryClient.invalidateQueries({
-        queryKey: ["expense", tabIdOrEmpty, expenseIdOrEmpty],
+      void invalidateTabData(queryClient, tabIdOrEmpty, {
+        expenseId: expenseIdOrEmpty,
       });
-      queryClient.invalidateQueries({
-        queryKey: ["expenseAuditLog", tabIdOrEmpty, expenseIdOrEmpty],
-      });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
       toast.success("Expense restored");
     } else {
       toast.error(result.error ?? "Failed to restore expense");
@@ -679,19 +652,8 @@ export function ExpensePage() {
                 members={tab?.members ?? []}
                 participants={tab?.participants ?? []}
                 currentUserId={currentUserId}
-                onSuccess={() => {
-                  setEditDialogOpen(false);
-                  queryClient.invalidateQueries({
-                    queryKey: [
-                      "expenseAuditLog",
-                      tabIdOrEmpty,
-                      expenseIdOrEmpty,
-                    ],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["expense", tabIdOrEmpty, expenseIdOrEmpty],
-                  });
-                }}
+                // EditExpenseForm invalidates the tab ledger + this expense.
+                onSuccess={() => setEditDialogOpen(false)}
                 onDeleteSuccess={() => navigate(`/tabs/${tabIdOrEmpty}`)}
               />
             </DialogContent>

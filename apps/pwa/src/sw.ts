@@ -12,6 +12,7 @@ import {
   setCatchHandler,
 } from "workbox-routing";
 import { getLastCheckTime, setLastCheckTime } from "../lib/periodic-sync-store";
+import { RpcHttpError, rpcCall } from "../lib/rpc-fetch";
 
 declare let self: ServiceWorkerGlobalScope;
 
@@ -19,8 +20,6 @@ if (import.meta.env.DEV) {
   self.__WB_DISABLE_DEV_LOGS = true;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const RPC_URL = API_BASE ? `${API_BASE.replace(/\/$/, "")}/rpc` : "/rpc";
 const PERIODIC_SYNC_TAG = "check-notifications";
 const OFFLINE_SYNC_TAG = "sync-offline-mutations";
 
@@ -144,22 +143,10 @@ async function processPeriodicSync(): Promise<void> {
   const since = lastCheck || Date.now() - 24 * 60 * 60 * 1000;
 
   try {
-    const res = await fetch(RPC_URL, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        json: { since },
-        path: ["notifications", "listMissed"],
-      }),
-    });
-    if (!res.ok) return;
-
-    const raw = await res.json();
-    const data =
-      raw && typeof raw === "object" && "json" in raw
-        ? (raw as { json: { friendRequests?: unknown[]; tabInvites?: unknown[] } }).json
-        : raw;
+    const data = await rpcCall<{
+      friendRequests?: unknown[];
+      tabInvites?: unknown[];
+    }>(["notifications", "listMissed"], { since });
     if (!data || typeof data !== "object") return;
 
     type FriendRequestRow = {
@@ -233,9 +220,10 @@ self.addEventListener("notificationclick", function (event) {
     (data.type === "friend_request" || data.type === "tab_invite")
   ) {
     const isFriend = data.type === "friend_request";
-    const path = isFriend
-      ? `${API_BASE}/friends/requests/${requestId}/${action}`
-      : `${API_BASE}/tab-invites/requests/${requestId}/${action}`;
+    const procedure = [
+      isFriend ? "friends" : "tabInvites",
+      action === "accept" ? "acceptRequest" : "rejectRequest",
+    ];
     const queueType =
       data.type === "friend_request"
         ? action === "accept"
@@ -248,20 +236,19 @@ self.addEventListener("notificationclick", function (event) {
     event.waitUntil(
       (async () => {
         let executed = false;
+        let rejected = false;
         if (navigator.onLine) {
           try {
-            const res = await fetch(path, {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-            });
-            executed = res.ok;
-          } catch {
-            // Fall through to queue
+            await rpcCall(procedure, { requestId });
+            executed = true;
+          } catch (err) {
+            // A 4xx (already handled, expired, …) won't succeed later either.
+            rejected =
+              err instanceof RpcHttpError && err.status >= 400 && err.status < 500;
           }
         }
 
-        if (!executed) {
+        if (!executed && !rejected) {
           const { enqueue } = await import("../lib/offline-queue");
           await enqueue({
             type: queueType,
@@ -280,7 +267,9 @@ self.addEventListener("notificationclick", function (event) {
           action === "accept" ? "Request accepted" : "Request rejected";
         const body = executed
           ? "Done."
-          : "Your response will sync when you're back online.";
+          : rejected
+            ? "This request is no longer available."
+            : "Your response will sync when you're back online.";
         await self.registration.showNotification(title, {
           body,
           icon: "/icon-192x192.png",

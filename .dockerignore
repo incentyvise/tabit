@@ -1,15 +1,40 @@
-node_modules
-.next
-dist
-out
-*.log
+# Keep the build context small: `turbo prune` only needs sources + lockfile.
+**/node_modules
+**/.next
+**/dist
+**/out
+**/.turbo
+**/*.tsbuildinfo
+**/*.log
+**/.DS_Store
+.pnpm-store
 .git
 .env
 .env.*
 !.env.example
-apps/mcp
+**/.env
+**/.env.*
+!**/*.example.env
 certs
-apps/web/scripts/dev-https.js
+*.pem
+
+# Editor / agent tooling
+.claude
 .cursor
+.windsurf
+.agents
+.vscode
+.idea
+skills
+skills-lock.json
+ai
+todo.md
+
+apps/mcp
+apps/web/scripts/dev-https.js
+
+# Dockerfiles and compose aren't needed inside the context
+**/Dockerfile
+cloud-docker-compose.yml
 *.md
 !README.md

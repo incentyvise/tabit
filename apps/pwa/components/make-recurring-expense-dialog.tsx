@@ -25,9 +25,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatRelativeCalendarDate } from "@/lib/format-date";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { preferencesQuery } from "@/lib/queries";
 
 export type RecurringTemplatePayload = {
   amount: number;
@@ -159,11 +159,7 @@ export function MakeRecurringExpenseDialog({
   draft?: PendingRecurringRuleWithoutTemplate | null;
   onConfirm: (payload: PendingRecurringRuleWithoutTemplate) => void;
 }) {
-  const { data: preferencesData } = useQuery({
-    queryKey: ["preferences"],
-    queryFn: async () => api.preferences.get(),
-    staleTime: 60_000,
-  });
+  const { data: preferencesData } = useQuery(preferencesQuery());
   const userTimeZone =
     preferencesData?.success && preferencesData.timezone?.trim()
       ? preferencesData.timezone.trim()

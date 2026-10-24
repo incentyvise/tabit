@@ -47,6 +47,7 @@ import { getDisplayName } from "@/lib/display-name";
 import { formatAmount } from "@/lib/format-amount";
 import { formatAbsoluteDate } from "@/lib/format-date";
 import { CURATED_CURRENCIES, getCurrency } from "shared";
+import { expensesAllQuery, invalidateTabData, tabQuery } from "@/lib/queries";
 
 export function TabManagePage() {
   const { tabId } = useParams<{ tabId: string }>();
@@ -55,14 +56,9 @@ export function TabManagePage() {
   const { data: session } = authClient.useSession();
   const setNavTitle = useNavTitle();
 
-  const { data: tab, isPending: tabPending } = useQuery({
-    queryKey: ["tab", tabIdOrEmpty],
-    queryFn: async () => {
-      const r = await api.tabs.get(tabIdOrEmpty);
-      return r.success && r.tab ? r.tab : null;
-    },
-    enabled: !!tabIdOrEmpty,
-  });
+  const { data: tab, isPending: tabPending } = useQuery(
+    tabQuery(tabIdOrEmpty),
+  );
 
   const currentUserId = session?.user?.id ?? "";
   const tabCurrency = tab?.currency ?? "USD";
@@ -116,14 +112,7 @@ export function TabManagePage() {
   }
 
   const invalidateTabQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["tab", tabIdOrEmpty] });
-    queryClient.invalidateQueries({ queryKey: ["tabs"] });
-    queryClient.invalidateQueries({ queryKey: ["expenses", tabIdOrEmpty] });
-    queryClient.invalidateQueries({
-      queryKey: ["expenses", tabIdOrEmpty, "all"],
-    });
-    queryClient.invalidateQueries({ queryKey: ["balances", tabIdOrEmpty] });
-    queryClient.invalidateQueries({ queryKey: ["activity"] });
+    void invalidateTabData(queryClient, tabIdOrEmpty);
   };
 
   return (
@@ -346,14 +335,8 @@ function ImportCsvForm({
     "all" | "duplicate" | "error"
   >("all");
 
-  const { data: expensesResult } = useQuery({
-    queryKey: ["expenses", tabIdOrEmpty, "all"],
-    queryFn: async () => {
-      const r = await api.expenses.list(tabIdOrEmpty);
-      return r.success
-        ? { expenses: r.expenses ?? [], total: r.total ?? 0 }
-        : { expenses: [], total: 0 };
-    },
+  const { data: expensesResult, isFetching: expensesFetching } = useQuery({
+    ...expensesAllQuery(tabIdOrEmpty),
     enabled: step === "preview" && !!tabIdOrEmpty,
   });
   const existingExpenses = expensesResult?.expenses ?? [];
@@ -401,9 +384,16 @@ function ImportCsvForm({
   }
 
   async function handlePreviewClick() {
-    await queryClient.invalidateQueries({
-      queryKey: ["expenses", tabIdOrEmpty],
-    });
+    // Duplicate detection must run against the current ledger, not a cached copy.
+    try {
+      await queryClient.fetchQuery({
+        ...expensesAllQuery(tabIdOrEmpty),
+        staleTime: 0,
+      });
+    } catch {
+      setError("Couldn't load existing expenses to check for duplicates");
+      return;
+    }
     setStep("preview");
   }
 
@@ -822,7 +812,9 @@ function ImportCsvForm({
                 </Button>
                 <Button
                   onClick={handleImport}
-                  disabled={loading || importableCount === 0}
+                  disabled={
+                    loading || expensesFetching || importableCount === 0
+                  }
                 >
                   {loading
                     ? "Importing..."

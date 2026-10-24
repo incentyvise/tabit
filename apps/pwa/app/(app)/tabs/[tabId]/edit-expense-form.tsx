@@ -55,6 +55,7 @@ import {
   splitConfigLabel,
   type SplitConfig,
 } from "@/components/split-dialog";
+import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -241,16 +242,7 @@ export function EditExpenseForm({
       const result = await api.expenses.update(tabId, expenseId, updateBody);
 
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["tab", tabId] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
-        queryClient.invalidateQueries({
-          queryKey: ["expense", tabId, expenseId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["expenseAuditLog", tabId, expenseId],
-        });
+        void invalidateTabData(queryClient, tabId, { expenseId });
         toast.success("Expense updated");
         if (onSuccess) onSuccess();
         else navigate(`/tabs/${tabId}`);
@@ -399,9 +391,7 @@ export function EditExpenseForm({
     setDeleting(true);
     const result = await api.expenses.delete(tabId, expenseId);
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["expenses", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["balances", tabId] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      void invalidateTabData(queryClient, tabId, { expenseId });
       toast.success("Expense deleted");
       const cb = onDeleteSuccess ?? onSuccess;
       if (cb) cb();

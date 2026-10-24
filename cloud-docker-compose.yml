@@ -2,6 +2,13 @@
 # Domains: api.tabit.in, app.tabit.in, wrk.tabit.in, admin.tabit.in
 # Set secrets via Doppler (DOPPLER_TOKEN_* per service) or Dokploy env sync.
 # PWA/admin: DOPPLER_TOKEN_PWA / DOPPLER_TOKEN_ADMIN are build args (static Vite bundles); api/workers use tokens at runtime.
+# Images use BuildKit cache mounts (Docker 23+ / BuildKit enabled by default).
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   api:
@@ -37,6 +44,7 @@ services:
     networks:
       - tabit
     restart: always
+    logging: *default-logging
     healthcheck:
       test:
         [
@@ -48,7 +56,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      # api runs DB migrations before listening
+      start_period: 60s
 
   workers:
     build:
@@ -77,6 +86,19 @@ services:
     networks:
       - tabit
     restart: always
+    logging: *default-logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   pwa:
     build:
@@ -89,12 +111,10 @@ services:
         - TURBO_TOKEN=${TURBO_TOKEN}
     expose:
       - "3003"
-    depends_on:
-      api:
-        condition: service_healthy
     networks:
       - tabit
     restart: always
+    logging: *default-logging
 
   admin:
     build:
@@ -109,12 +129,10 @@ services:
         - TURBO_TOKEN=${TURBO_TOKEN}
     expose:
       - "3004"
-    depends_on:
-      api:
-        condition: service_healthy
     networks:
       - tabit
     restart: always
+    logging: *default-logging
 
 networks:
   tabit:

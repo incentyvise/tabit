@@ -1,52 +1,44 @@
 import "ios-vibrator-pro-max";
 import { useEffect } from "react";
 import { ThemeProvider } from "next-themes";
+import { MotionConfig } from "framer-motion";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { get, set, del, createStore } from "idb-keyval";
+import { defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { registerGlobalTapHaptic } from "@/lib/vibrate";
-import { queryClient } from "./lib/query-client";
+import { NON_PERSISTED_KEY_ROOTS } from "@/lib/queries";
+import { PERSIST_MAX_AGE, queryClient } from "./lib/query-client";
+import { persister } from "./lib/persister";
 
-const idbStore =
-  typeof window !== "undefined"
-    ? createStore("tabit-query-cache", "queries")
-    : null;
-
-declare const __BUILD_TIME__: string;
-
-const CACHE_BUSTER =
-  typeof __BUILD_TIME__ !== "undefined"
-    ? __BUILD_TIME__
-    : (import.meta.env.VITE_QUERY_CACHE_BUSTER ?? "v1");
-
-const persister = idbStore
-  ? createAsyncStoragePersister({
-      storage: {
-        getItem: async (key) => await get(key, idbStore),
-        setItem: async (key, value) => await set(key, value, idbStore),
-        removeItem: async (key) => await del(key, idbStore),
-      },
-    })
-  : ({
-      persistClient: async () => {},
-      restoreClient: async () => undefined,
-      removeClient: async () => {},
-    } as const);
+/**
+ * Bump when a persisted query's data shape changes. Deliberately not the build
+ * time: busting on every deploy would wipe the offline cache after each update.
+ */
+const CACHE_BUSTER = import.meta.env.VITE_QUERY_CACHE_BUSTER ?? "2";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => registerGlobalTapHaptic(), []);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange
+    >
       <PersistQueryClientProvider
         client={queryClient}
         persistOptions={{
           persister,
-          maxAge: 1000 * 60 * 60 * 24 * 7,
+          maxAge: PERSIST_MAX_AGE,
           buster: CACHE_BUSTER,
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) =>
+              defaultShouldDehydrateQuery(query) &&
+              !NON_PERSISTED_KEY_ROOTS.has(query.queryKey[0]),
+          },
         }}
       >
-        {children}
+        <MotionConfig reducedMotion="user">{children}</MotionConfig>
       </PersistQueryClientProvider>
     </ThemeProvider>
   );

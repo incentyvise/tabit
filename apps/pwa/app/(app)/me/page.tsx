@@ -60,6 +60,7 @@ import { CURATED_CURRENCIES, getCurrency, formatAmount } from "shared";
 import { useBustCache } from "@/lib/use-bust-cache";
 import { getSupportedIanaTimeZones } from "@/lib/iana-timezones";
 import { useQueryClient } from "@tanstack/react-query";
+import { friendTokenQuery, preferencesQuery, queryKeys } from "@/lib/queries";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{5,12}$/;
 
@@ -115,10 +116,9 @@ export function MePage() {
   const setNavTitle = useNavTitle();
   const queryClient = useQueryClient();
 
-  const { data: prefsData, isPending: preferencesPending } = useQuery({
-    queryKey: ["preferences"],
-    queryFn: () => api.preferences.get(),
-  });
+  const { data: prefsData, isPending: preferencesPending } = useQuery(
+    preferencesQuery(),
+  );
 
   const deviceTimeZone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "",
@@ -264,7 +264,7 @@ export function MePage() {
     });
     setTimezoneLoading(false);
     if (result.success) {
-      void queryClient.invalidateQueries({ queryKey: ["preferences"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
       toast.success("Timezone updated");
     } else {
       setTimezone(previous);
@@ -908,14 +908,7 @@ function InviteSection() {
     data: url,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["friendToken"],
-    queryFn: async () => {
-      const result = await api.friends.getToken();
-      if (!result.success) throw new Error(result.error ?? "Failed to load");
-      return result.url!;
-    },
-  });
+  } = useQuery(friendTokenQuery());
 
   async function handleCopy(): Promise<boolean> {
     if (!url) return false;

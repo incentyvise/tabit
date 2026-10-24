@@ -18,13 +18,13 @@
     "drizzle-orm": "^0.41.0",
     "models": "workspace:*",
     "shared": "workspace:*",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "drizzle-kit": "^0.30.0"
   },
   "devDependencies": {
     "dotenv-cli": "^7.4.2",
     "@types/node": "^26.0.0",
     "@types/pg": "^8.11.0",
-    "drizzle-kit": "^0.30.0",
     "typescript": "^5.0.0"
   }
 }

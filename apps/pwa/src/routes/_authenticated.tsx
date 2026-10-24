@@ -18,6 +18,7 @@ import { VersionMismatchBanner } from "@/components/version-mismatch-banner";
 import { LoadingScreen } from "@/app/(app)/components/loading-screen";
 import type { ConnectionState } from "@/src/lib/realtime-manager";
 import { useNavStore } from "@/lib/stores/nav-store";
+import { ensureCacheOwner } from "@/lib/session-cache";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -42,6 +43,11 @@ function AuthenticatedLayoutContent() {
   useLayoutEffect(() => {
     setDisplayPathname(pathname);
   }, [pathname, setDisplayPathname]);
+
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (userId) void ensureCacheOwner(userId);
+  }, [userId]);
 
   const connectionState = useNotifications(!!session?.user);
   useAppBadge(!!session?.user);
@@ -107,6 +113,7 @@ function AuthenticatedShell({
       {!isOnboarding && <TopNavbar />}
       {!isOnboarding && <VersionMismatchBanner />}
       <main
+        data-scroll-restoration-id="app-main"
         className={
           isOnboarding
             ? "app-scroll-hide min-h-0 flex-1 overflow-y-auto overscroll-y-none"

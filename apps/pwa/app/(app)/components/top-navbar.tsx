@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "@/lib/navigation";
+import { useGoBack, useLocation } from "@/lib/navigation";
 import { Link } from "@/lib/navigation";
 import {
   ArrowLeft,
@@ -14,7 +13,7 @@ import { useNavStore } from "@/lib/stores/nav-store";
 import { SignOutButton } from "./sign-out-button";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
-import { transitionSpring } from "@/lib/animations";
+import { quickTransition } from "@/lib/animations";
 
 const navTitleVariants = {
   initial: { opacity: 0, y: -6 },
@@ -25,7 +24,7 @@ const navTitleVariants = {
 export function TopNavbar() {
   const { pathname } = useLocation();
   const displayPathname = useNavStore((s) => s.displayPathname) || pathname;
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const navPage = useNavTitleConfig();
   const isMePage = displayPathname === "/me";
   const isFriendsListPage =
@@ -52,7 +51,7 @@ export function TopNavbar() {
               size="icon"
               className="relative z-10 shrink-0"
               aria-label="Go back"
-              onClick={() => navigate(-1)}
+              onClick={() => goBack(navPage.backHref)}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -63,7 +62,8 @@ export function TopNavbar() {
                 ) : isTabPage ? (
                   <ReceiptText className="h-5 w-5 shrink-0 text-tab-icon" />
                 ) : null}
-                <AnimatePresence mode="wait" initial={false}>
+                {/* popLayout: swap titles without waiting for the exit to finish. */}
+                <AnimatePresence mode="popLayout" initial={false}>
                   <motion.h1
                     key={navPage.title}
                     className="truncate text-lg font-semibold"
@@ -71,7 +71,7 @@ export function TopNavbar() {
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    transition={transitionSpring.transition}
+                    transition={quickTransition}
                   >
                     {navPage.title}
                   </motion.h1>

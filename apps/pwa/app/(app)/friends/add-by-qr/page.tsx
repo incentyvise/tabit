@@ -1,10 +1,11 @@
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useNavigate, useSearchParams } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useNavTitle } from "../../context/nav-title-context";
 import { Button } from "@/components/ui/button";
 import { InlinePageSkeleton } from "@/components/page-skeletons";
+import { invalidateMembership } from "@/lib/queries";
 
 function AddByQRContent() {
   const navigate = useNavigate();
@@ -18,12 +19,17 @@ function AddByQRContent() {
   const qr = searchParams.get("qr");
   const userParam = searchParams.get("user");
   const code = qr ?? token;
+  // addByToken is not idempotent and the search params change as soon as we
+  // navigate away, so this flow must run exactly once per mount.
+  const startedRef = useRef(false);
 
   useEffect(() => {
     setNavTitle?.({ title: "Add friend", backHref: "/friends" });
   }, [setNavTitle]);
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     if (!code) {
       navigate("/friends/addFriend", { replace: true });
       return;
@@ -36,9 +42,7 @@ function AddByQRContent() {
     api.friends.addByToken(code).then((result) => {
       if (result.success && result.friendTabId) {
         setStatus("success");
-        queryClient.invalidateQueries({ queryKey: ["friends"] });
-        queryClient.invalidateQueries({ queryKey: ["tabs"] });
-        queryClient.invalidateQueries({ queryKey: ["activity"] });
+        void invalidateMembership(queryClient);
         navigate(`/tabs/${result.friendTabId}`, { replace: true });
       } else if (!result.success) {
         setStatus("error");

@@ -1,165 +1,88 @@
 import { toast } from "sonner";
 import { api } from "./api";
-import {
-  dequeue,
-  putBack,
-  remove,
-  type OfflineAction,
-} from "./offline-queue";
+import { invalidateMembership } from "./queries";
+import { queryClient } from "@/src/lib/query-client";
+import { dequeue, putBack, type OfflineAction } from "./offline-queue";
 
-function isBusinessError(
-  result: { success: boolean },
-): result is { success: false; error: string } {
-  return result.success === false;
-}
+type CallResult =
+  | { success: true }
+  | { success: false; error: string; status?: number };
 
-async function processAction(action: OfflineAction): Promise<boolean> {
-  const p = action.payload;
+const LABELS: Record<OfflineAction["type"], string> = {
+  accept_friend_request: "Could not accept friend request",
+  reject_friend_request: "Could not reject friend request",
+  accept_tab_invite: "Could not accept tab invite",
+  reject_tab_invite: "Could not reject tab invite",
+};
 
+function run(action: OfflineAction): Promise<CallResult> {
+  const requestId = action.payload.requestId as string;
   switch (action.type) {
-    case "accept_friend_request": {
-      const r = await api.friends.acceptRequest(p.requestId as string);
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not accept friend request");
-        return true;
-      }
-      return true;
-    }
-    case "reject_friend_request": {
-      const r = await api.friends.rejectRequest(p.requestId as string);
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not reject friend request");
-        return true;
-      }
-      return true;
-    }
-    case "accept_tab_invite": {
-      const r = await api.tabInvites.acceptRequest(p.requestId as string);
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not accept tab invite");
-        return true;
-      }
-      return true;
-    }
-    case "reject_tab_invite": {
-      const r = await api.tabInvites.rejectRequest(p.requestId as string);
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not reject tab invite");
-        return true;
-      }
-      return true;
-    }
-    case "expense_create": {
-      const r = await api.expenses.create(
-        p.tabId as string,
-        p.body as Parameters<typeof api.expenses.create>[1],
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not create expense (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "expense_update": {
-      const r = await api.expenses.update(
-        p.tabId as string,
-        p.expenseId as string,
-        p.body as Record<string, unknown>,
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not update expense (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "expense_delete": {
-      const r = await api.expenses.delete(
-        p.tabId as string,
-        p.expenseId as string,
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not delete expense (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "expense_restore": {
-      const r = await api.expenses.restore(
-        p.tabId as string,
-        p.expenseId as string,
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not restore expense (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "settlement_create": {
-      const r = await api.settlements.record(
-        p.tabId as string,
-        p.body as Parameters<typeof api.settlements.record>[1],
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not record settlement (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "settlement_update": {
-      const r = await api.settlements.update(
-        p.tabId as string,
-        p.settlementId as string,
-        p.body as Parameters<typeof api.settlements.update>[2],
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not update settlement (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    case "settlement_delete": {
-      const r = await api.settlements.delete(
-        p.tabId as string,
-        p.settlementId as string,
-      );
-      if (isBusinessError(r)) {
-        toast.error(r.error ?? "Could not delete settlement (server rejected)");
-        return true;
-      }
-      return true;
-    }
-    default:
-      return true;
+    case "accept_friend_request":
+      return api.friends.acceptRequest(requestId);
+    case "reject_friend_request":
+      return api.friends.rejectRequest(requestId);
+    case "accept_tab_invite":
+      return api.tabInvites.acceptRequest(requestId);
+    case "reject_tab_invite":
+      return api.tabInvites.rejectRequest(requestId);
   }
 }
 
-export async function processOfflineQueue(): Promise<void> {
+/** true = finished (succeeded or permanently rejected), false = retry later. */
+async function processAction(action: OfflineAction): Promise<boolean> {
+  const result = await run(action);
+  if (result.success) return true;
+  // No HTTP status means the request never reached the server (offline, DNS,
+  // CORS…): keep it queued. 5xx may also be transient.
+  if (result.status === undefined || result.status >= 500) return false;
+  toast.error(result.error || LABELS[action.type]);
+  return true;
+}
+
+let inFlight: Promise<void> | null = null;
+
+/** Single-flight: `online` and the SW sync message can fire together. */
+export function processOfflineQueue(): Promise<void> {
+  inFlight ??= drain().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function drain(): Promise<void> {
+  const retryLater: OfflineAction[] = [];
+  let processed = 0;
   let action = await dequeue();
   while (action) {
+    let done = false;
     try {
-      const done = await processAction(action);
-      if (done) {
-        await remove(action.id);
-      } else {
-        await putBack(action);
-      }
+      done = await processAction(action);
     } catch {
-      await putBack(action);
+      done = false;
     }
+    if (done) processed += 1;
+    else retryLater.push(action);
     action = await dequeue();
   }
+  // Re-queue after draining so a failing action isn't retried in a tight loop.
+  for (const a of retryLater) await putBack(a);
+  if (processed > 0) await invalidateMembership(queryClient);
 }
 
-export function registerOfflineSyncListeners(): void {
-  if (typeof window === "undefined") return;
+export function registerOfflineSyncListeners(): () => void {
+  if (typeof window === "undefined") return () => {};
 
-  window.addEventListener("online", () => {
-    void processOfflineQueue();
-  });
-
-  navigator.serviceWorker?.addEventListener("message", (event) => {
+  const onOnline = () => void processOfflineQueue();
+  const onMessage = (event: MessageEvent) => {
     if (event.data?.type === "PROCESS_OFFLINE_QUEUE") {
       void processOfflineQueue();
     }
-  });
+  };
+  window.addEventListener("online", onOnline);
+  navigator.serviceWorker?.addEventListener("message", onMessage);
+  return () => {
+    window.removeEventListener("online", onOnline);
+    navigator.serviceWorker?.removeEventListener("message", onMessage);
+  };
 }
