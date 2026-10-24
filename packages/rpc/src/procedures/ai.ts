@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { generateText, Output } from "ai";
 import { google } from "@ai-sdk/google";
-import { tab as tabData, user as userData } from "data";
+import { admin as adminData, tab as tabData, user as userData } from "data";
+import { log } from "otel";
 import { expenseService } from "services";
 import { authed } from "../auth-middleware.js";
 import { ORPCError } from "@orpc/server";
@@ -19,6 +20,10 @@ function formatDescription(description: string): string {
     )
     .join(" ");
 }
+
+const AI_MODEL = "gemini-2.5-flash-lite";
+
+type AiOutcome = "success" | "low_confidence" | "parse_error" | "error";
 
 const parsedExpenseSchema = z.object({
   tabId: z.string(),
@@ -134,9 +139,32 @@ CRITICAL - Confidence and ambiguity:
 
       const userPrompt = `Parse this expense: "${input.text}"`;
 
+      const startedAt = Date.now();
+      let usage: { inputTokens?: number; outputTokens?: number } | undefined;
+      let confidence: number | undefined;
+      const recordUsage = (outcome: AiOutcome, extra?: { expenseId?: string; errorMessage?: string }) => {
+        void adminData
+          .recordAiUsage({
+            userId,
+            feature: "add_expense",
+            outcome,
+            model: AI_MODEL,
+            inputChars: input.text.length,
+            inputTokens: usage?.inputTokens ?? null,
+            outputTokens: usage?.outputTokens ?? null,
+            latencyMs: Date.now() - startedAt,
+            confidence: confidence != null ? String(confidence) : null,
+            expenseId: extra?.expenseId ?? null,
+            errorMessage: extra?.errorMessage?.slice(0, 500) ?? null,
+          })
+          .catch((err) =>
+            log("warn", "Failed to record AI usage", { error: String(err) }),
+          );
+      };
+
       try {
-        const { output } = await generateText({
-          model: google("gemini-2.5-flash-lite"),
+        const { output, usage: callUsage } = await generateText({
+          model: google(AI_MODEL),
           system: systemPrompt,
           prompt: userPrompt,
           output: Output.object({
@@ -144,11 +172,15 @@ CRITICAL - Confidence and ambiguity:
           }),
         });
 
+        usage = callUsage;
+        confidence = output.confidence;
+
         const CONFIDENCE_THRESHOLD = 0.8;
         if (output.confidence < CONFIDENCE_THRESHOLD) {
           const reason =
             output.ambiguityReason ??
             "Input is ambiguous. Please specify amount, which tab, and who paid.";
+          recordUsage("low_confidence", { errorMessage: reason });
           throw new ORPCError("BAD_REQUEST", { message: reason });
         }
 
@@ -167,6 +199,8 @@ CRITICAL - Confidence and ambiguity:
           ),
         );
 
+        recordUsage("success", { expenseId: data.expenseId });
+
         return {
           expenseId: data.expenseId,
           amount: data.amount,
@@ -177,17 +211,24 @@ CRITICAL - Confidence and ambiguity:
           participants: data.participants,
         };
       } catch (err) {
-        if (err instanceof ORPCError) throw err;
+        if (err instanceof ORPCError) {
+          if (confidence == null || confidence >= 0.8) {
+            recordUsage("error", { errorMessage: err.message });
+          }
+          throw err;
+        }
         const errMsg = err instanceof Error ? err.message : String(err);
         if (
           errMsg.includes("NoObjectGeneratedError") ||
           errMsg.includes("No object generated")
         ) {
+          recordUsage("parse_error", { errorMessage: errMsg });
           throw new ORPCError("BAD_REQUEST", {
             message:
               "Please include amount and description (e.g. 50 dinner with Sam at Olive Garden).",
           });
         }
+        recordUsage("error", { errorMessage: errMsg });
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
           message: "Failed to parse expense. Please try again.",
         });

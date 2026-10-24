@@ -90,3 +90,11 @@ export const getSettlementById = settlement.getById;
 export const getSettlementAuditLog = settlement.getAuditLog;
 
 export const getActivityForUser = activity.getForUser;
+
+export { admin } from "./admin.js";
+export type {
+  AdminAuditRow,
+  AdminUserListItem,
+  AdminTabListItem,
+  AdminExpenseListItem,
+} from "./admin.js";

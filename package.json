@@ -34,7 +34,10 @@
     "build:queue": "turbo build --filter=queue",
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
-    "db:push": "turbo db:push"
+    "db:push": "turbo db:push",
+    "dev:admin": "turbo dev --filter=admin",
+    "start:admin": "pnpm --filter=admin start",
+    "build:admin": "turbo build --filter=admin"
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.6",

@@ -395,3 +395,33 @@ export const userPreference = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.key] })],
 );
+
+/** One row per AI-assisted call (voice/text expense entry) for admin usage stats. */
+export const aiUsageEvent = pgTable(
+  "ai_usage_event",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** add_expense | ... */
+    feature: text("feature").notNull(),
+    /** success | low_confidence | parse_error | error */
+    outcome: text("outcome").notNull(),
+    model: text("model").notNull(),
+    inputChars: integer("inputChars").notNull(),
+    inputTokens: integer("inputTokens"),
+    outputTokens: integer("outputTokens"),
+    latencyMs: integer("latencyMs").notNull(),
+    confidence: decimal("confidence", { precision: 4, scale: 3 }),
+    expenseId: text("expenseId"),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ai_usage_event_createdAt_idx").on(t.createdAt),
+    index("ai_usage_event_userId_createdAt_idx").on(t.userId, t.createdAt),
+  ],
+);

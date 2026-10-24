@@ -162,6 +162,13 @@
       "when": 1778792929400,
       "tag": "0022_last_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792845754835,
+      "tag": "0023_admin_and_ai_usage",
+      "breakpoints": true
     }
   ]
 }
