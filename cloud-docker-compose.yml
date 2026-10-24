@@ -1,7 +1,7 @@
 # Multi-container deployment (Dokploy compose)
-# Domains: api.tabit.in, app.tabit.in, wrk.tabit.in
+# Domains: api.tabit.in, app.tabit.in, wrk.tabit.in, admin.tabit.in
 # Set secrets via Doppler (DOPPLER_TOKEN_* per service) or Dokploy env sync.
-# PWA: DOPPLER_TOKEN_PWA is a build arg (static Vite bundle); api/workers use tokens at runtime.
+# PWA/admin: DOPPLER_TOKEN_PWA / DOPPLER_TOKEN_ADMIN are build args (static Vite bundles); api/workers use tokens at runtime.
 
 services:
   api:
@@ -20,6 +20,9 @@ services:
       - VITE_API_URL=${VITE_API_URL:-https://api.tabit.in}
       - BETTER_AUTH_COOKIE_DOMAIN=${BETTER_AUTH_COOKIE_DOMAIN:-.tabit.in}
       - BETTER_AUTH_TRUSTED_ORIGINS=${BETTER_AUTH_TRUSTED_ORIGINS:-https://app.tabit.in}
+      - NEXT_PUBLIC_ADMIN_URL=${NEXT_PUBLIC_ADMIN_URL:-https://admin.tabit.in}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - WORKERS_HEALTH_URL=${WORKERS_HEALTH_URL:-http://workers:3002/health}
       - PLUNK_SECRET_KEY=${PLUNK_SECRET_KEY}
       - PLUNK_BASE_URL=${PLUNK_BASE_URL}
       - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
@@ -87,6 +90,26 @@ services:
         - TURBO_TOKEN=${TURBO_TOKEN}
     expose:
       - "3003"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - tabit
+    restart: always
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        - DOPPLER_TOKEN=${DOPPLER_TOKEN_ADMIN}
+        - VITE_API_URL=${VITE_API_URL:-https://api.tabit.in}
+        - NEXT_PUBLIC_PWA_URL=${NEXT_PUBLIC_PWA_URL:-https://app.tabit.in}
+        - NEXT_PUBLIC_ADMIN_URL=${NEXT_PUBLIC_ADMIN_URL:-https://admin.tabit.in}
+        - TURBO_TEAM=${TURBO_TEAM}
+        - TURBO_TOKEN=${TURBO_TOKEN}
+    expose:
+      - "3004"
     depends_on:
       api:
         condition: service_healthy

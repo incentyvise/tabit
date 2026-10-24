@@ -2,3 +2,6 @@ setup:
   - project: tabit
     config: dev
     path: .
+  - project: admin
+    config: dev
+    path: apps/admin

@@ -3,4 +3,5 @@ packages:
   - "apps/api"
   - "apps/workers"
   - "apps/pwa"
+  - "apps/admin"
   - "packages/*"

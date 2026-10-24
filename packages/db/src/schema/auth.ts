@@ -19,6 +19,11 @@ export const user = pgTable("user", {
   defaultCurrency: text("defaultCurrency"),
   /** IANA timezone for recurring schedules and calendar UX (e.g. America/Los_Angeles). */
   timezone: text("timezone"),
+  /** Better Auth admin plugin: "admin" | "user". */
+  role: text("role"),
+  banned: boolean("banned").default(false),
+  banReason: text("banReason"),
+  banExpires: timestamp("banExpires"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -34,6 +39,8 @@ export const session = pgTable("session", {
   expiresAt: timestamp("expiresAt").notNull(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
+  /** Admin user id when this session is an admin impersonation. */
+  impersonatedBy: text("impersonatedBy"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
