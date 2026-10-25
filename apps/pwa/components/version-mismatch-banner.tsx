@@ -7,10 +7,10 @@ import {
 import { useUpdateBanner } from "@/app/(app)/context/update-banner-context";
 
 export function VersionMismatchBanner() {
-  const { needRefresh, applyUpdate } = useUpdateBanner();
+  const { needRefresh, updating, applyUpdate } = useUpdateBanner();
 
   return (
-    <Dialog open={needRefresh} onOpenChange={() => {}}>
+    <Dialog open={needRefresh || updating} onOpenChange={() => {}}>
       <DialogContent
         className="max-w-[90vw] flex flex-col rounded-lg"
         showCloseButton={false}
@@ -25,10 +25,11 @@ export function VersionMismatchBanner() {
         </DialogHeader>
         <button
           type="button"
-          onClick={() => void applyUpdate()}
-          className="mt-2 w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+          onClick={applyUpdate}
+          disabled={updating}
+          className="mt-2 w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-70"
         >
-          Update now
+          {updating ? "Updating…" : "Update now"}
         </button>
       </DialogContent>
     </Dialog>

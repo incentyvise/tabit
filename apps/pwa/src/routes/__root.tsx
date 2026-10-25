@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { Providers } from "../providers";
 import { UpdateGate } from "@/components/update-gate";
 import { Toaster } from "@/components/ui/sonner";
+import { VersionMismatchBanner } from "@/components/version-mismatch-banner";
 import { registerOfflineSyncListeners } from "@/lib/offline-sync";
 
 export interface RouterContext {
@@ -23,6 +24,7 @@ function RootComponent() {
         <div className="h-full overflow-hidden bg-background font-sans text-foreground">
           <Outlet />
         </div>
+        <VersionMismatchBanner />
         <Toaster />
       </UpdateGate>
     </Providers>

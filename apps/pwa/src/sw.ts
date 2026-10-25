@@ -11,6 +11,8 @@ import {
   registerRoute,
   setCatchHandler,
 } from "workbox-routing";
+import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
+import type { WorkboxPlugin } from "workbox-core";
 import { getLastCheckTime, setLastCheckTime } from "../lib/periodic-sync-store";
 import { RpcHttpError, rpcCall } from "../lib/rpc-fetch";
 
@@ -34,11 +36,38 @@ self.addEventListener("message", (event) => {
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
+// App-shell navigation. Server endpoints that may share the origin (dev proxy,
+// health checks) must reach the network instead of getting index.html.
 const allowlist = import.meta.env.DEV ? [/^\/$/] : undefined;
+const denylist = [/^\/rpc(\/|$)/, /^\/api\//, /^\/healthz$/];
 const handler = createHandlerBoundToURL("/index.html");
-registerRoute(new NavigationRoute(handler, { allowlist }));
+registerRoute(new NavigationRoute(handler, { allowlist, denylist }));
 
-setCatchHandler(async () => {
+// Google Fonts (Inter): keep the stylesheet fresh, cache font files for good
+// so text renders offline and without a network round-trip on launch.
+const cacheOkOrOpaque: WorkboxPlugin = {
+  cacheWillUpdate: async ({ response }) =>
+    response.status === 200 || response.type === "opaque" ? response : null,
+};
+registerRoute(
+  ({ url }) => url.origin === "https://fonts.googleapis.com",
+  new StaleWhileRevalidate({
+    cacheName: "google-fonts-stylesheets",
+    plugins: [cacheOkOrOpaque],
+  }),
+);
+registerRoute(
+  ({ url }) => url.origin === "https://fonts.gstatic.com",
+  new CacheFirst({
+    cacheName: "google-fonts-webfonts",
+    plugins: [cacheOkOrOpaque],
+  }),
+);
+
+// Only navigations get the offline page; a failed script/font must fail as
+// itself (an HTML body would surface as a confusing MIME error).
+setCatchHandler(async ({ request }) => {
+  if (request.mode !== "navigate") return Response.error();
   return (
     (await caches.match("/offline.html")) ??
     new Response("Offline", { status: 503 })

@@ -110,6 +110,9 @@ services:
         - DOPPLER_TOKEN=${DOPPLER_TOKEN_PWA}
         - TURBO_TEAM=${TURBO_TEAM}
         - TURBO_TOKEN=${TURBO_TOKEN}
+    volumes:
+      # Previous builds' /assets so installed PWAs on an older build don't 404.
+      - pwa-assets:/var/cache/tab-assets
     expose:
       - "3003"
     networks:
@@ -134,6 +137,9 @@ services:
       - tabit
     restart: always
     logging: *default-logging
+
+volumes:
+  pwa-assets:
 
 networks:
   tabit:

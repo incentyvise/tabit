@@ -11,14 +11,13 @@ import { useNotifications } from "@/lib/use-notifications";
 import { useAppBadge } from "@/lib/use-app-badge";
 import { usePeriodicSync } from "@/lib/use-periodic-sync";
 import { PushResubscriptionProvider } from "@/app/(app)/context/push-resubscription-context";
-import { UpdateBannerProvider } from "@/app/(app)/context/update-banner-context";
 import { TopNavbar } from "@/app/(app)/components/top-navbar";
 import { BottomNavbar } from "@/app/(app)/components/bottom-navbar";
-import { VersionMismatchBanner } from "@/components/version-mismatch-banner";
 import { LoadingScreen } from "@/app/(app)/components/loading-screen";
 import type { ConnectionState } from "@/src/lib/realtime-manager";
 import { useNavStore } from "@/lib/stores/nav-store";
 import { ensureCacheOwner } from "@/lib/session-cache";
+import { requestPersistentStorage } from "@/src/lib/sw-update";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -46,7 +45,9 @@ function AuthenticatedLayoutContent() {
 
   const userId = session?.user?.id;
   useEffect(() => {
-    if (userId) void ensureCacheOwner(userId);
+    if (!userId) return;
+    void ensureCacheOwner(userId);
+    void requestPersistentStorage();
   }, [userId]);
 
   const connectionState = useNotifications(!!session?.user);
@@ -92,12 +93,10 @@ function AuthenticatedLayoutContent() {
   const isOnboarding = pathname === "/onboarding";
 
   return (
-    <UpdateBannerProvider>
-      <AuthenticatedShell
-        isOnboarding={isOnboarding}
-        connectionState={connectionState}
-      />
-    </UpdateBannerProvider>
+    <AuthenticatedShell
+      isOnboarding={isOnboarding}
+      connectionState={connectionState}
+    />
   );
 }
 
@@ -111,7 +110,6 @@ function AuthenticatedShell({
   return (
     <div className="app-shell fixed inset-0 flex flex-col">
       {!isOnboarding && <TopNavbar />}
-      {!isOnboarding && <VersionMismatchBanner />}
       <main
         data-scroll-restoration-id="app-main"
         className={
