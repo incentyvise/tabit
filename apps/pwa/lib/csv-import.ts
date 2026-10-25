@@ -233,7 +233,6 @@ export type RowValidation = {
 export function validateRow(
   row: ParsedCsvRow,
   columnToUserId: Record<string, string>,
-  defaultPayerId: string,
 ): RowValidation {
   if (row.cost <= 0) {
     return { valid: false, error: "Cost must be positive" };
@@ -252,7 +251,6 @@ export function validateRow(
 
   // Splitwise net = Paid - Owe: positive = paid (gets back), negative = owes
   const payers = Object.entries(aggregatedByUser).filter(([, amt]) => amt > 0);
-  const owees = Object.entries(aggregatedByUser).filter(([, amt]) => amt < 0);
 
   if (payers.length === 0) {
     return {

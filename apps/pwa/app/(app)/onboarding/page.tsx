@@ -124,7 +124,6 @@ export function OnboardingPage() {
   );
 
   const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-  const DISABLE_REDIRECT = false; // TODO: remove - temp disable to view page
 
   useEffect(() => {
     setPlatform(getPlatform());
@@ -190,7 +189,7 @@ export function OnboardingPage() {
       navigate("/login", { replace: true });
       return;
     }
-    if (!DISABLE_REDIRECT && !needsProfileSetup(session.user) && step !== 2) {
+    if (!needsProfileSetup(session.user) && step !== 2) {
       const returnTo = searchParams.get("returnTo");
       const safeReturn =
         returnTo && returnTo !== "/onboarding" ? returnTo : "/tabs";
@@ -270,7 +269,7 @@ export function OnboardingPage() {
   if (sessionPending || !session?.user) {
     return null;
   }
-  if (!DISABLE_REDIRECT && !needsProfileSetup(session.user) && step === 1) {
+  if (!needsProfileSetup(session.user) && step === 1) {
     return null;
   }
 

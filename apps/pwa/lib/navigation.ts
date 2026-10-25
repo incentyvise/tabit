@@ -26,6 +26,14 @@ export function useNavigate() {
         return;
       }
       if (typeof to === "string") {
+        // `to` is a path only; a query/hash (e.g. a returnTo URL) needs `href`.
+        if (/[?#]/.test(to)) {
+          return router.navigate({
+            href: to,
+            replace: options?.replace,
+            state: options?.state,
+          } as NavigateOptions);
+        }
         return navigate({
           to,
           replace: options?.replace,

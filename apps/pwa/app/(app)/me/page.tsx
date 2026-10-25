@@ -56,7 +56,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import QRCode from "qrcode";
-import { CURATED_CURRENCIES, getCurrency, formatAmount } from "shared";
+import { CURATED_CURRENCIES, getCurrency } from "shared";
 import { useBustCache } from "@/lib/use-bust-cache";
 import { getSupportedIanaTimeZones } from "@/lib/iana-timezones";
 import { useQueryClient } from "@tanstack/react-query";

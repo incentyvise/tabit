@@ -338,6 +338,8 @@ function HeroPreview() {
   );
 }
 
+// Currently disabled in the page body (see `<FeatureShowcase />` below).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FeatureShowcase() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });

@@ -400,7 +400,7 @@ function ImportCsvForm({
   const validRows = parsed
     ? parsed.rows.map((row) => ({
         row,
-        validation: validateRow(row, columnToUserId, currentUserId),
+        validation: validateRow(row, columnToUserId),
       }))
     : [];
 

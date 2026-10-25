@@ -90,7 +90,7 @@ export function ExpensePage() {
       setEditDialogOpen(true);
       navigate(`/tabs/${tabId}/expenses/${expenseId}`, { replace: true });
     }
-  }, [expense, tab, searchParams, navigate, tabIdOrEmpty, expenseIdOrEmpty]);
+  }, [expense, tab, searchParams, navigate, tabId, expenseId]);
 
   if (!tabIdOrEmpty || !expenseIdOrEmpty) return null;
 

@@ -2,6 +2,7 @@ import { Suspense, useEffect, useLayoutEffect } from "react";
 import {
   createFileRoute,
   Outlet,
+  useRouter,
   useRouterState,
   useSearch,
 } from "@tanstack/react-router";
@@ -38,6 +39,7 @@ function AuthenticatedLayoutContent() {
   const search = useSearch({ strict: false }) as Record<string, string | undefined>;
   const { data: session, isPending } = authClient.useSession();
   const setDisplayPathname = useNavStore((s) => s.setDisplayPathname);
+  const router = useRouter();
 
   useLayoutEffect(() => {
     setDisplayPathname(pathname);
@@ -66,7 +68,8 @@ function AuthenticatedLayoutContent() {
       const loginUrl = returnTo
         ? `/login?callbackURL=${encodeURIComponent(returnTo)}`
         : "/login";
-      window.location.replace(loginUrl);
+      // Client-side redirect: keeps the in-memory cache and avoids a reload.
+      void router.navigate({ href: loginUrl, replace: true });
       return;
     }
     if (needsProfileSetup(session.user) && pathname !== "/onboarding") {
@@ -76,11 +79,12 @@ function AuthenticatedLayoutContent() {
         ),
       ).toString();
       const returnTo = pathname + (searchStr ? `?${searchStr}` : "");
-      window.location.replace(
-        `/onboarding?returnTo=${encodeURIComponent(returnTo)}`,
-      );
+      void router.navigate({
+        href: `/onboarding?returnTo=${encodeURIComponent(returnTo)}`,
+        replace: true,
+      });
     }
-  }, [session, isPending, pathname, search]);
+  }, [session, isPending, pathname, search, router]);
 
   if (isPending) {
     return <LoadingScreen />;

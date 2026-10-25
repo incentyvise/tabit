@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import type { NotificationPayload } from "models";
 import { useSetPushResubscriptionRequired } from "@/app/(app)/context/push-resubscription-context";
@@ -15,6 +16,9 @@ import {
 export function useNotifications(enabled: boolean): ConnectionState {
   const queryClient = useQueryClient();
   const setNeedsResubscription = useSetPushResubscriptionRequired();
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("disconnected");
 
@@ -44,7 +48,7 @@ export function useNotifications(enabled: boolean): ConnectionState {
             action: {
               label: "Settings",
               onClick: () => {
-                window.location.assign("/me");
+                void routerRef.current.navigate({ href: "/me" });
               },
             },
           });
