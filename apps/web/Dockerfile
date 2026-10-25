@@ -15,27 +15,33 @@ RUN turbo prune web --docker
 
 # Stage 2: Install + build, then drop devDependencies
 FROM base AS builder
+RUN apk add --no-cache --virtual .doppler-deps curl gnupg \
+    && curl -sLf --retry 3 https://cli.doppler.com/install.sh | sh \
+    && apk del .doppler-deps
+
 COPY --from=prepare /app/out/json/ .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --store-dir /pnpm/store
 
 COPY --from=prepare /app/out/full/ .
 
+# Prefer Doppler (DOPPLER_TOKEN_WEB → DOPPLER_TOKEN, a web/prd service token). NEXT_PUBLIC_* is baked at
+# build time. Fallback build args for local builds without Doppler.
 # Build ARGs are exported to RUN as env vars (so Next sees them) without being persisted in an image.
-ARG VITE_BACKEND_URL=
+ARG DOPPLER_TOKEN=
 ARG NEXT_PUBLIC_WEB_URL=
-ARG NEXT_PUBLIC_PWA_URL=
 ARG NEXT_PUBLIC_DONATE_URL=
 ARG NEXT_PUBLIC_RYBBIT_SCRIPT_URL=
 ARG NEXT_PUBLIC_WEB_RYBBIT_SITE_ID=
-ARG OTEL_EXPORTER_OTLP_ENDPOINT=
-ARG OTEL_EXPORTER_OTLP_HEADERS=
-ARG OTEL_SERVICE_NAME=
 ARG TURBO_TEAM
 ARG TURBO_TOKEN
 
 # The root `build` script excludes web (`--filter=!web`), so build it explicitly.
-RUN pnpm exec turbo build --filter=web...
+RUN if [ -n "$DOPPLER_TOKEN" ]; then \
+      doppler run -- pnpm exec turbo build --filter=web...; \
+    else \
+      pnpm exec turbo build --filter=web...; \
+    fi
 
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --prod --frozen-lockfile --offline --store-dir /pnpm/store \

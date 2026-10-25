@@ -1,14 +1,15 @@
 export const appConfig = {
   name: "Tab",
   fullName: "Tab - Split expenses with friends",
-  description: "A simple way to split expenses with friends and tabs",
+  description:
+    "Tab is a free, open source expense splitting app and Splitwise alternative. Split bills with roommates, trips, couples, and friends with no expense limits, no ads, and no paid tier.",
   seo: {
-    title: "Tab - Splitwise Alternative Free | Expense Splitting for Friends",
+    title: "Tab: Free, Open Source Splitwise Alternative",
     description:
-      "Splitwise alternative free. Split bills with friends: no limits, no paywall, no wait timer. Free forever. Create tabs, add expenses, settle up.",
+      "Tab is the free, open source Splitwise alternative. Split bills with roommates, trips, and friends: unlimited expenses, no ads, multi-currency, recurring bills, and Splitwise import. Self-host or use it free.",
   },
   appUrl: process.env.NEXT_PUBLIC_WEB_URL ?? "https://tabit.in",
-  githubUrl: "https://github.com/parthkoshti/tabit",
+  githubUrl: "https://github.com/incentyvise/tabit",
   donateUrl: process.env.NEXT_PUBLIC_DONATE_URL ?? "",
   support: {
     paypalUrl: "https://paypal.me/parthkoshti",
