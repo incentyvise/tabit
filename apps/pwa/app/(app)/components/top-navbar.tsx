@@ -42,7 +42,7 @@ export function TopNavbar() {
     : null;
 
   return (
-    <header className="top-nav-safe fixed left-0 right-0 top-0 z-40 border-b border-border bg-background">
+    <header className="app-top-nav top-nav-safe fixed left-0 right-0 top-0 z-40 border-b border-border bg-background">
       <div className="relative flex h-14 items-center justify-between px-4">
         {navPage ? (
           <>

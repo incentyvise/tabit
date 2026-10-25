@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { useNavigate, useSearchParams, Link } from "@/lib/navigation";
+import {
+  useNavigate,
+  useSearchParams,
+  Link,
+  safeInternalPath,
+} from "@/lib/navigation";
 import { authClient } from "@/lib/auth-client";
 import { zodFieldErrors } from "@/lib/form-zod";
 import { Button } from "@/components/ui/button";
@@ -69,7 +74,7 @@ const COPY: Record<
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [searchParams] = useSearchParams();
-  const callbackURL = searchParams.get("callbackURL") ?? "/tabs";
+  const callbackURL = safeInternalPath(searchParams.get("callbackURL"), "/tabs");
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
   const [step, setStep] = useState<"email" | "otp">("email");

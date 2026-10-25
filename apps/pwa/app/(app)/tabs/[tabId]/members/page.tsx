@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { getDisplayName } from "@/lib/display-name";
 import { PlaceholderParticipantsCard } from "../placeholder-participants-card";
-import { invalidateTabData, queryKeys, tabInviteTokenQuery, tabQuery } from "@/lib/queries";
+import { queryKeys, tabInviteTokenQuery, tabQuery } from "@/lib/queries";
 
 function TabQRCode({ tabId }: { tabId: string }) {
   const [copied, setCopied] = useState(false);
@@ -360,7 +360,6 @@ export function TabMembersPage() {
             tabIdOrEmpty={tabId}
             tab={tab}
             currentUserId={currentUserId}
-            onSuccess={() => void invalidateTabData(queryClient, tabId)}
           />
         )}
 

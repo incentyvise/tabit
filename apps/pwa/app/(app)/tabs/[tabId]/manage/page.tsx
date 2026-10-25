@@ -47,12 +47,11 @@ import { getDisplayName } from "@/lib/display-name";
 import { formatAmount } from "@/lib/format-amount";
 import { formatAbsoluteDate } from "@/lib/format-date";
 import { CURATED_CURRENCIES, getCurrency } from "shared";
-import { expensesAllQuery, invalidateTabData, tabQuery } from "@/lib/queries";
+import { expensesAllQuery, tabQuery } from "@/lib/queries";
 
 export function TabManagePage() {
   const { tabId } = useParams<{ tabId: string }>();
   const tabIdOrEmpty = tabId ?? "";
-  const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const setNavTitle = useNavTitle();
 
@@ -111,32 +110,25 @@ export function TabManagePage() {
     );
   }
 
-  const invalidateTabQueries = () => {
-    void invalidateTabData(queryClient, tabIdOrEmpty);
-  };
-
   return (
     <div className="p-4">
       <div className="mx-auto max-w-md space-y-6">
         <SetCurrencyForm
           tabIdOrEmpty={tabIdOrEmpty}
           currentCurrency={tabCurrency}
-          onSuccess={invalidateTabQueries}
         />
         {!tab.isDirect && (
           <>
             <RenameTabForm
               tabIdOrEmpty={tabIdOrEmpty}
               currentName={tab.name}
-              onSuccess={invalidateTabQueries}
-            />
+                />
             <ImportCsvForm
               tabIdOrEmpty={tabIdOrEmpty}
               tabCurrency={tabCurrency}
               members={tab.members}
               currentUserId={currentUserId}
-              onSuccess={invalidateTabQueries}
-            />
+                />
           </>
         )}
       </div>

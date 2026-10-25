@@ -94,8 +94,10 @@ export const api = {
     getPendingRequests: () =>
       call(() => orpcClient.friends.getPendingRequests()),
 
+    // Sending a request changes nothing the sender's screens show (only
+    // incoming requests are listed), so it's a plain call.
     sendRequest: (username: string) =>
-      mutate(() => orpcClient.friends.sendRequest({ username }), membership),
+      call(() => orpcClient.friends.sendRequest({ username })),
 
     acceptRequest: (requestId: string) =>
       mutate(() => orpcClient.friends.acceptRequest({ requestId }), membership),
@@ -146,10 +148,7 @@ export const api = {
       call(() => orpcClient.tabInvites.getPendingRequests()),
 
     sendRequest: (tabId: string, username: string) =>
-      mutate(() => orpcClient.tabInvites.sendRequest({ tabId, username }), {
-        kind: "membership",
-        tabId,
-      }),
+      call(() => orpcClient.tabInvites.sendRequest({ tabId, username })),
 
     acceptRequest: (requestId: string) =>
       mutate(

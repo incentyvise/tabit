@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { z } from "zod";
 import { usernameSchema } from "models";
-import { useNavigate, useSearchParams } from "@/lib/navigation";
+import {
+  useNavigate,
+  useSearchParams,
+  safeInternalPath,
+} from "@/lib/navigation";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api-client";
 import { needsProfileSetup } from "@/lib/profile";
@@ -190,9 +194,8 @@ export function OnboardingPage() {
       return;
     }
     if (!needsProfileSetup(session.user) && step !== 2) {
-      const returnTo = searchParams.get("returnTo");
-      const safeReturn =
-        returnTo && returnTo !== "/onboarding" ? returnTo : "/tabs";
+      const returnTo = safeInternalPath(searchParams.get("returnTo"), "/tabs");
+      const safeReturn = returnTo.startsWith("/onboarding") ? "/tabs" : returnTo;
       navigate(safeReturn, { replace: true });
     }
   }, [session, sessionPending, navigate, searchParams, step]);
@@ -221,9 +224,8 @@ export function OnboardingPage() {
   }, [username]);
 
   function handleStep2Continue() {
-    const returnTo = searchParams.get("returnTo");
-    const safeReturn =
-      returnTo && returnTo !== "/onboarding" ? returnTo : "/tabs";
+    const returnTo = safeInternalPath(searchParams.get("returnTo"), "/tabs");
+    const safeReturn = returnTo.startsWith("/onboarding") ? "/tabs" : returnTo;
     navigate(safeReturn, { replace: true });
   }
 

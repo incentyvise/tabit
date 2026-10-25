@@ -217,10 +217,10 @@ body,
 ::view-transition-new(root) {
   animation-duration: 150ms;
 }
-.top-nav-safe {
+.app-top-nav {
   view-transition-name: app-top-nav;
 }
-.bottom-nav-safe {
+.app-bottom-nav {
   view-transition-name: app-bottom-nav;
 }
 ::view-transition-group(app-top-nav),
@@ -242,6 +242,10 @@ body,
 
 .top-nav-safe {
   padding-top: var(--safe-top);
+}
+
+/* The app's fixed top bar spans the full width, so it also clears a landscape notch. */
+.app-top-nav {
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }

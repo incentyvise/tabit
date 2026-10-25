@@ -262,9 +262,9 @@ export const notificationService = {
   publishSettlementChangedToUser: async (
     userId: string,
     params: Parameters<typeof createSettlementChangedNotificationPayload>[0],
+    options: { push: boolean },
   ): Promise<void> => {
     const payload = createSettlementChangedNotificationPayload(params);
-    // Members not involved in the payment only need their balances refreshed.
-    await publish(userId, payload, { skipPush: !params.involvesRecipient });
+    await publish(userId, payload, { skipPush: !options.push });
   },
 };

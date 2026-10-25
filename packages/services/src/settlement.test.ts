@@ -345,9 +345,10 @@ describe("settlementService", () => {
 
       expect(result.success).toBe(true);
       const publish = vi.mocked(notificationService.publishSettlementChangedToUser);
-      expect(publish).toHaveBeenCalledTimes(2);
-      const byUser = Object.fromEntries(publish.mock.calls.map(([uid, p]) => [uid, p]));
-      expect(byUser.user1).toBeUndefined();
+      expect(publish).toHaveBeenCalledTimes(3);
+      const byUser = Object.fromEntries(publish.mock.calls.map(([uid, p, o]) => [uid, { ...p, push: o.push }]));
+      // The actor's other devices refresh silently.
+      expect(byUser.user1).toMatchObject({ involvesRecipient: true, push: false });
       expect(byUser.user2).toMatchObject({
         action: "recorded",
         settlementId: "set-new",
@@ -356,8 +357,9 @@ describe("settlementService", () => {
         payerName: "user1",
         payeeName: "user2",
         involvesRecipient: true,
+        push: true,
       });
-      expect(byUser.user3).toMatchObject({ involvesRecipient: false });
+      expect(byUser.user3).toMatchObject({ involvesRecipient: false, push: false });
     });
 
     test("delete notifies other members with action deleted", async () => {
@@ -381,8 +383,10 @@ describe("settlementService", () => {
 
       expect(result.success).toBe(true);
       const publish = vi.mocked(notificationService.publishSettlementChangedToUser);
-      expect(publish.mock.calls.map(([uid]) => uid).sort()).toEqual(["user2", "user3"]);
-      expect(publish.mock.calls[0]![1]).toMatchObject({ action: "deleted", involvesRecipient: true });
+      expect(publish.mock.calls.map(([uid]) => uid).sort()).toEqual(["user1", "user2", "user3"]);
+      const pushed = publish.mock.calls.filter(([, , o]) => o.push).map(([uid]) => uid).sort();
+      expect(pushed).toEqual(["user2", "user3"]);
+      expect(publish.mock.calls[0]![1]).toMatchObject({ action: "deleted" });
     });
 
     test("a notification failure does not fail the mutation", async () => {
