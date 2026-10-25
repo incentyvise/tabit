@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { queryClient } from "./lib/query-client";
 import { routeTree } from "./routeTree.gen";
+import { initServiceWorker } from "./lib/sw-update";
 
 const router = createRouter({
   routeTree,
@@ -13,6 +14,14 @@ const router = createRouter({
   // <main> does. Reset it on push navigation and restore it on back/forward.
   scrollRestoration: true,
   scrollToTopSelectors: ['[data-scroll-restoration-id="app-main"]'],
+});
+
+// Registered before React renders so update checks also run on login/invite
+// pages, and every screen change doubles as an update check.
+initServiceWorker({
+  onNavigation: (listener) => {
+    router.subscribe("onResolved", listener);
+  },
 });
 
 declare module "@tanstack/react-router" {

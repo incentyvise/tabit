@@ -50,6 +50,14 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
 COPY apps/pwa/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/apps/pwa/dist /usr/share/nginx/html
 
+# Archive of previous builds' hashed assets (mount a volume here to keep them
+# across deploys). Owned by the unprivileged nginx user so the entrypoint
+# script can write it.
+USER root
+RUN mkdir -p /var/cache/tab-assets/assets && chown -R 101:101 /var/cache/tab-assets
+COPY --chmod=755 apps/pwa/docker/retain-assets.sh /docker-entrypoint.d/40-retain-assets.sh
+USER 101
+
 EXPOSE 3003
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

@@ -58,26 +58,37 @@ export default defineConfig({
         navigateFallback: "/index.html",
       },
       manifest: {
+        // Stable install identity, independent of start_url.
+        id: "/",
         name: "Tab - Split expenses with friends",
         short_name: "Tab",
         description: "A simple way to split expenses with friends and tabs",
         start_url: "/",
+        scope: "/",
         display: "standalone",
+        display_override: ["standalone"],
+        orientation: "portrait",
         background_color: "#08090a",
         theme_color: "#08090a",
+        categories: ["finance", "productivity"],
         icons: [
-          { src: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
-          { src: "/icon-1024x1024.png", sizes: "1024x1024", type: "image/png" },
+          { src: "/icon-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/icon-1024x1024.png", sizes: "1024x1024", type: "image/png", purpose: "any" },
+          // Logo inset into the 80% safe zone for Android adaptive icons.
+          { src: "/icon-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       injectManifest: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
-      workbox: {
-        navigateFallbackDenylist: [/^\/api/, /^\/rpc/],
-      },
-      includeAssets: ["favicon.ico", "icon-192x192.png", "icon-512x512.png", "offline.html"],
+      includeAssets: [
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "icon-192x192.png",
+        "icon-512x512.png",
+        "offline.html",
+      ],
     }),
   ],
   resolve: {
