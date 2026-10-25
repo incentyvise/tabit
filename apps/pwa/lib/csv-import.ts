@@ -91,8 +91,6 @@ export function autoMatchMemberColumns(
   const result: Record<string, string> = {};
   const matchedMemberIds = new Set<string>();
 
-  console.log("[Import CSV] autoMatchMemberColumns", memberColumns, members);
-
   for (const col of memberColumns) {
     const displayName = getMemberColumnDisplayName(col);
     const colNorm = normalizeForMatch(displayName);
@@ -118,8 +116,6 @@ export function autoMatchMemberColumns(
       }
     }
   }
-
-  console.log("[Import CSV] autoMatchMemberColumns", result);
 
   return result;
 }

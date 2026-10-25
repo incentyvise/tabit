@@ -34,7 +34,7 @@ const appBaseUrl =
   process.env.APP_URL ??
   "https://localhost:3003";
 
-function getPushTitle(payload: {
+export function getPushTitle(payload: {
   type: string;
   fromUserName?: string | null;
   tabName?: string;
@@ -209,7 +209,7 @@ function getPushTitle(payload: {
   return "New notification";
 }
 
-function getPushBody(payload: {
+export function getPushBody(payload: {
   type: string;
   description?: string;
   amount?: string;
@@ -327,7 +327,7 @@ function getPushBody(payload: {
   return "You have a new notification";
 }
 
-function getNavigatePath(payload: {
+export function getNavigatePath(payload: {
   type: string;
   tabId?: string;
   expenseId?: string;
