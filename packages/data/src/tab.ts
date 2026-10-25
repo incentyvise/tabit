@@ -23,11 +23,18 @@ export type TabWithBalance = {
   currency: string;
   createdAt: Date;
   balance?: number;
+  /** Every participant (members and placeholders) is at zero. Set with includeBalance. */
+  isSettled?: boolean;
   memberUserIds?: string[];
   /** Latest non-deleted expense `createdAt` or settlement `createdAt`, whichever is newer. */
   lastExpenseDate?: Date | null;
   expenseCount?: number;
 };
+
+/** Balances are rounded to cents; treat anything under half a cent as zero. */
+function isFullySettled(balances: Array<{ amount: number }>): boolean {
+  return balances.every((b) => Math.abs(b.amount) < 0.005);
+}
 
 export type FriendTab = {
   id: string;
@@ -257,6 +264,7 @@ export const tab = {
             const balances = await getBalancesForTab(r.id);
             const myBalance = balances.find((b) => b.userId === userId);
             result.balance = myBalance ? myBalance.amount : 0;
+            result.isSettled = isFullySettled(balances);
           }
           if (includeMemberIds) {
             const members = await db
@@ -325,6 +333,7 @@ export const tab = {
           const balances = await getBalancesForTab(r.id);
           const myBalance = balances.find((b) => b.userId === userId);
           result.balance = myBalance ? myBalance.amount : 0;
+          result.isSettled = isFullySettled(balances);
         }
         if (includeMemberIds) {
           const members = await db
