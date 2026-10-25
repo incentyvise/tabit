@@ -10,8 +10,9 @@ import { Github, Menu, X, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
+  { label: "Compare", href: "/#compare" },
+  { label: "FAQ", href: "/#faq" },
   { label: "Blog", href: "/blog" },
-  { label: "Motivation", href: "/blog/why-tab" },
 ];
 
 const featuresNavClass =

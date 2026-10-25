@@ -82,7 +82,8 @@ export function Footer() {
               />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-              Splitting bills shouldn't cost you. No limits, no paywalls.
+              The free, open source Splitwise alternative. Split bills with
+              friends, with no limits and no paywalls.
             </p>
             <Button asChild className="mt-4 gap-2">
               <Link href={`${appConfig.pwaUrl}/login`}>
@@ -93,7 +94,11 @@ export function Footer() {
           </div>
 
           <FooterSection title="Product">
-            <FooterLink href="/blog/why">Why Tab?</FooterLink>
+            <FooterLink href="/#features">Features</FooterLink>
+            <FooterLink href="/#compare">Tab vs Splitwise</FooterLink>
+            <FooterLink href="/#faq">FAQ</FooterLink>
+            <FooterLink href="/blog/why-tab">Why Tab?</FooterLink>
+            <FooterLink href="/blog">Blog</FooterLink>
             <FooterLink href="/support">Donate $5</FooterLink>
           </FooterSection>
 
@@ -138,7 +143,7 @@ export function Footer() {
             >
               {creator.name}
             </a>
-            . Free forever.
+            . Free forever and open source.
           </p>
         </div>
       </div>

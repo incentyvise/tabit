@@ -104,7 +104,7 @@ Deploy Tab on your own infrastructure. You provide PostgreSQL; Docker Compose ru
 ### Step 1: Clone and Configure
 
 ```bash
-git clone https://github.com/parthkoshti/tabit.git
+git clone https://github.com/incentyvise/tabit.git
 cd tabit
 cp .env.example .env
 ```
