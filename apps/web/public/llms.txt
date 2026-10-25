@@ -1,0 +1,44 @@
+# Tab
+
+> Tab is a free, open source expense splitting app and Splitwise alternative. Split bills with roommates, trips, couples, and friend groups with no expense limits, no ads, and no paid tier. Use the free hosted version at https://tabit.in or self-host it from GitHub.
+
+## Key facts
+
+- Price: free forever. No premium plan, no trial, no credit card. The hosted version is funded by optional donations.
+- Limits: none. Unlimited expenses, tabs, and friends. No daily expense cap or cooldown timer.
+- Ads: none.
+- Open source: full source code at https://github.com/incentyvise/tabit. Self-hostable, so expense data can stay on your own server.
+- Platforms: web app that installs as a progressive web app (PWA) on iPhone, Android, macOS, Windows, and Linux.
+- Migration: imports Splitwise CSV exports, so existing expense history carries over.
+- Creator: Parth Koshti (https://parthkoshti.com).
+
+## Features
+
+- Group tabs and one-on-one tabs with running balances of who owes whom
+- Split equally, by exact amounts, by percentages, or by shares
+- Multi-currency: each tab has a home currency; expenses and settlements can be recorded in any currency and are converted at the rate for the transaction date
+- Recurring expenses (weekly, monthly, or chosen weekdays), with pause and resume
+- Voice expense entry: say "Alex paid 30 for pizza in Roomies" and the expense is created
+- Payment reminders on one-on-one tabs with a selectable tone
+- Placeholder friends for people who haven't signed up yet, mergeable into their real account later
+- QR code and link invites
+- Real-time sync and push notifications
+- Simplified debts: the fewest payments needed to settle a group
+- Search across a tab's expenses and settlements
+- Full edit history on every expense
+- Emoji reactions on expenses
+- Passwordless sign-in with a one-time email code
+
+## Tab vs Splitwise
+
+- As of October 2026, Splitwise's free plan limits the number of expenses you can add per day and shows ads; automatic currency conversion, expense search, and receipt scanning require Splitwise Pro (about $40/year in the US).
+- Tab includes every feature for free with no limits and no ads, and is open source and self-hostable, which Splitwise is not.
+
+## Links
+
+- Home: https://tabit.in
+- Open the app: https://app.tabit.in
+- Why Tab exists: https://tabit.in/blog/why-tab
+- Blog: https://tabit.in/blog
+- Support the project: https://tabit.in/support
+- Source code: https://github.com/incentyvise/tabit

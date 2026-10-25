@@ -2,7 +2,7 @@ export const appConfig = {
   name: "Tab",
   fullName: "Tab - Split expenses with friends",
   description: "A simple way to split expenses with friends and tabs",
-  githubUrl: "https://github.com/parthkoshti/tabit",
+  githubUrl: "https://github.com/incentyvise/tabit",
   donateUrl: import.meta.env.NEXT_PUBLIC_DONATE_URL ?? "",
   icons: {
     sm: { src: "/icon-192x192.png", sizes: "192x192" },
