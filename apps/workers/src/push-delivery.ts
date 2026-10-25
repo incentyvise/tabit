@@ -53,6 +53,9 @@ function getPushTitle(payload: {
   editRulePath?: string;
   placeholderDisplayName?: string;
   targetDisplayName?: string;
+  action?: string;
+  payerName?: string;
+  payeeName?: string;
 }): string {
   if (payload.forcePush)
     return payload.type === "tab_invite"
@@ -175,6 +178,21 @@ function getPushTitle(payload: {
     const who = payload.fromUserName?.trim() || "Someone";
     return `${who} merged "${payload.placeholderDisplayName}" with you in ${payload.tabName}`;
   }
+  if (
+    payload.type === "settlement_changed" &&
+    typeof payload.payerName === "string" &&
+    typeof payload.payeeName === "string"
+  ) {
+    const sym = payload.currencySymbol ?? "$";
+    const amt = payload.amount ? `${sym}${payload.amount}` : "a payment";
+    const verb =
+      payload.action === "deleted"
+        ? "Payment removed"
+        : payload.action === "updated"
+          ? "Payment edited"
+          : "Payment recorded";
+    return `${verb}: ${payload.payerName} paid ${payload.payeeName} ${amt}`;
+  }
   if (payload.type === "expense_reaction") return "New reaction on expense";
   if (payload.type === "friend_request") return "New friend request";
   if (payload.type === "tab_invite") return "New tab invite";
@@ -212,6 +230,10 @@ function getPushBody(payload: {
   editRulePath?: string;
   placeholderDisplayName?: string;
   targetDisplayName?: string;
+  action?: string;
+  payerName?: string;
+  payeeName?: string;
+  isDirect?: boolean;
 }): string {
   if (payload.forcePush) return "This is a test notification";
   if (payload.type === "friend_request") return "New friend request";
@@ -282,6 +304,17 @@ function getPushBody(payload: {
     const desc = payload.description || "expense";
     return `${payload.fromUserName ?? "Someone"} reacted ${payload.emoji} to ${desc}`;
   }
+  if (payload.type === "settlement_changed") {
+    const who = payload.fromUserName?.trim() || "Someone";
+    const where = payload.isDirect || !payload.tabName ? "" : ` in ${payload.tabName}`;
+    const verb =
+      payload.action === "deleted"
+        ? "removed"
+        : payload.action === "updated"
+          ? "edited"
+          : "recorded";
+    return `${who} ${verb} this payment${where}.`;
+  }
   if (payload.type === "placeholder_merged") {
     const who = payload.fromUserName?.trim() || "Someone";
     const ph =
@@ -325,7 +358,11 @@ function getNavigatePath(payload: {
       ? `/tabs/${payload.tabId}/expenses/${payload.expenseId}`
       : `/tabs/${payload.tabId}`;
   }
-  if (payload.type === "expenses_bulk_imported" && payload.tabId) {
+  if (
+    (payload.type === "expenses_bulk_imported" ||
+      payload.type === "settlement_changed") &&
+    payload.tabId
+  ) {
     return `/tabs/${payload.tabId}`;
   }
   if (payload.type === "placeholder_merged" && payload.tabId) {

@@ -1,8 +1,72 @@
-import { tab, settlement, ensureMemberParticipantsForTab, getParticipantIdForTabUser, getParticipantById } from "data";
-import { CURRENCY_CODES } from "shared";
+import {
+  tab,
+  settlement,
+  user as userData,
+  ensureMemberParticipantsForTab,
+  getParticipantIdForTabUser,
+  getParticipantById,
+} from "data";
+import { CURRENCY_CODES, getCurrency } from "shared";
 import { log } from "otel";
 import { convertToTabCurrency } from "./fx-rate.js";
+import { notificationService } from "./notification.js";
 import { ok, err, type Result } from "./types.js";
+
+/**
+ * Tell every other tab member about a settlement change so their balances
+ * refresh in realtime. Payer/payee get a push; everyone else realtime only.
+ * Failures are logged and never fail the mutation.
+ */
+async function notifySettlementChange(params: {
+  action: "recorded" | "updated" | "deleted";
+  tabId: string;
+  settlementId: string;
+  performedById: string;
+  fromParticipantId: string | null;
+  toParticipantId: string | null;
+  fromUserId: string | null;
+  toUserId: string | null;
+  amount: number;
+}): Promise<void> {
+  try {
+    const [members, tabInfo, actor, fromP, toP] = await Promise.all([
+      tab.getMembers(params.tabId),
+      tab.getTabInfoForNotifications(params.tabId, params.performedById),
+      userData.getById(params.performedById),
+      params.fromParticipantId ? getParticipantById(params.fromParticipantId) : null,
+      params.toParticipantId ? getParticipantById(params.toParticipantId) : null,
+    ]);
+    if (!tabInfo || !members) return;
+    const currencySymbol = getCurrency(tabInfo.currency)?.symbol ?? "$";
+    const createdAt = new Date();
+    for (const m of members) {
+      if (m.userId === params.performedById) continue;
+      await notificationService.publishSettlementChangedToUser(m.userId, {
+        action: params.action,
+        tabId: params.tabId,
+        settlementId: params.settlementId,
+        tabName: tabInfo.name,
+        isDirect: tabInfo.isDirect,
+        fromUserId: params.performedById,
+        fromUserName: actor?.name ?? null,
+        payerName: fromP?.displayName ?? "Someone",
+        payeeName: toP?.displayName ?? "someone",
+        amount: params.amount.toFixed(2),
+        currencySymbol,
+        involvesRecipient:
+          m.userId === params.fromUserId || m.userId === params.toUserId,
+        createdAt,
+      });
+    }
+  } catch (e) {
+    log("warn", `Settlement notification failed ${params.tabId}`, {
+      event: "settlement.notify_failed",
+      tabId: params.tabId,
+      settlementId: params.settlementId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
 
 export const settlementService = {
   getForTab: async (
@@ -150,7 +214,7 @@ export const settlementService = {
       storedOriginal = enteredAmount;
     }
 
-    await settlement.record({
+    const settlementId = await settlement.record({
       tabId,
       fromUserId: fromUserResolved,
       toUserId: toUserResolved,
@@ -170,6 +234,17 @@ export const settlementService = {
       amount: amountTab,
       currency: settlementCurrency,
       performedById,
+    });
+    await notifySettlementChange({
+      action: "recorded",
+      tabId,
+      settlementId,
+      performedById,
+      fromParticipantId: fromPid,
+      toParticipantId: toPid,
+      fromUserId: fromUserResolved,
+      toUserId: toUserResolved,
+      amount: amountTab,
     });
     return ok(undefined);
   },
@@ -289,6 +364,17 @@ export const settlementService = {
       currency: settlementCurrency,
       performedById,
     });
+    await notifySettlementChange({
+      action: "updated",
+      tabId,
+      settlementId,
+      performedById,
+      fromParticipantId: fromPid,
+      toParticipantId: toPid,
+      fromUserId: fromUserResolved,
+      toUserId: toUserResolved,
+      amount: amountTab,
+    });
     return ok(undefined);
   },
 
@@ -313,6 +399,17 @@ export const settlementService = {
       settlementId,
       tabId,
       userId,
+    });
+    await notifySettlementChange({
+      action: "deleted",
+      tabId,
+      settlementId,
+      performedById: userId,
+      fromParticipantId: s.fromParticipantId ?? null,
+      toParticipantId: s.toParticipantId ?? null,
+      fromUserId: s.fromUserId,
+      toUserId: s.toUserId,
+      amount: Number(s.amount),
     });
     return ok(undefined);
   },

@@ -10,6 +10,8 @@ export type NotificationJobData = {
   userId: string;
   payload: NotificationPayload;
   forcePush?: boolean;
+  /** Deliver over realtime only (no web push). */
+  skipPush?: boolean;
   traceContext?: Record<string, string>;
 };
 
@@ -36,7 +38,7 @@ export function getNotificationsQueue(): Queue<NotificationJobData> {
 export async function enqueueNotification(
   userId: string,
   payload: NotificationPayload,
-  options?: { forcePush?: boolean },
+  options?: { forcePush?: boolean; skipPush?: boolean },
 ): Promise<void> {
   const queue = getNotificationsQueue();
   const traceContext: Record<string, string> = {};
@@ -45,6 +47,7 @@ export async function enqueueNotification(
     userId,
     payload,
     forcePush: options?.forcePush,
+    ...(options?.skipPush ? { skipPush: true } : {}),
     ...(Object.keys(traceContext).length > 0 ? { traceContext } : {}),
   });
 }

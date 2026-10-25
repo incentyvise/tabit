@@ -54,6 +54,11 @@ export function invalidateForNotification(
       void invalidateTabData(queryClient, payload.tabId, { expenseId });
       return;
     }
+    case "settlement_changed":
+      void invalidateTabData(queryClient, payload.tabId, {
+        settlementId: payload.settlementId,
+      });
+      return;
     case "recurring_rule_needs_fix":
       void queryClient.invalidateQueries({
         queryKey: queryKeys.recurringExpense(payload.ruleId),

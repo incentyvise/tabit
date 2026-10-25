@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { settlementService } from "./settlement.js";
-import { tab, settlement } from "data";
+import { tab, settlement, user as userData } from "data";
+import { notificationService } from "./notification.js";
 
 const tabWithMembers = {
   id: "tab1",
@@ -321,6 +322,76 @@ describe("settlementService", () => {
       if (!result.success) {
         expect(result.error).toBe("Not a member");
       }
+    });
+  });
+
+  describe("realtime notifications", () => {
+    const tabInfo = { name: "Trip", isDirect: false, currency: "USD", displayName: "Trip" };
+
+    beforeEach(() => {
+      vi.mocked(tab.isMember).mockResolvedValue(true);
+      vi.mocked(tab.getMembers).mockResolvedValue([
+        { userId: "user1", role: "member" },
+        { userId: "user2", role: "member" },
+        { userId: "user3", role: "member" },
+      ]);
+      vi.mocked(tab.getTabInfoForNotifications).mockResolvedValue(tabInfo);
+      vi.mocked(userData.getById).mockResolvedValue({ id: "user1", name: "User 1" } as never);
+      vi.mocked(settlement.record).mockResolvedValue("set-new");
+    });
+
+    test("record notifies every other member; only the payee is flagged for push", async () => {
+      const result = await settlementService.record("tab1", "user1", "user2", 25, "user1");
+
+      expect(result.success).toBe(true);
+      const publish = vi.mocked(notificationService.publishSettlementChangedToUser);
+      expect(publish).toHaveBeenCalledTimes(2);
+      const byUser = Object.fromEntries(publish.mock.calls.map(([uid, p]) => [uid, p]));
+      expect(byUser.user1).toBeUndefined();
+      expect(byUser.user2).toMatchObject({
+        action: "recorded",
+        settlementId: "set-new",
+        tabId: "tab1",
+        amount: "25.00",
+        payerName: "user1",
+        payeeName: "user2",
+        involvesRecipient: true,
+      });
+      expect(byUser.user3).toMatchObject({ involvesRecipient: false });
+    });
+
+    test("delete notifies other members with action deleted", async () => {
+      vi.mocked(settlement.getById).mockResolvedValue({
+        id: "set1",
+        tabId: "tab1",
+        fromUserId: "user2",
+        toUserId: "user3",
+        fromParticipantId: "pid-user2",
+        toParticipantId: "pid-user3",
+        amount: 10,
+        currency: null,
+        originalAmount: null,
+        settlementDate: new Date("2024-06-01"),
+        createdAt: new Date(),
+        fromUser: null,
+        toUser: null,
+      } as never);
+
+      const result = await settlementService.delete("tab1", "set1", "user1");
+
+      expect(result.success).toBe(true);
+      const publish = vi.mocked(notificationService.publishSettlementChangedToUser);
+      expect(publish.mock.calls.map(([uid]) => uid).sort()).toEqual(["user2", "user3"]);
+      expect(publish.mock.calls[0]![1]).toMatchObject({ action: "deleted", involvesRecipient: true });
+    });
+
+    test("a notification failure does not fail the mutation", async () => {
+      vi.mocked(tab.getMembers).mockRejectedValue(new Error("db down"));
+
+      const result = await settlementService.record("tab1", "user1", "user2", 25, "user1");
+
+      expect(result.success).toBe(true);
+      expect(notificationService.publishSettlementChangedToUser).not.toHaveBeenCalled();
     });
   });
 });

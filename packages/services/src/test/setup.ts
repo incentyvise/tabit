@@ -142,5 +142,6 @@ vi.mock("../notification.js", () => ({
     publishTabInvite: vi.fn(),
     publishTabInviteAccepted: vi.fn(),
     publishPlaceholderMergedToUser: vi.fn(),
+    publishSettlementChangedToUser: vi.fn(),
   },
 }));

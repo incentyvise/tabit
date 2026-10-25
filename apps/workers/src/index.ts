@@ -105,8 +105,11 @@ async function deliverNotification(
   userId: string,
   payload: NotificationPayload,
   forcePush?: boolean,
+  skipPush?: boolean,
 ): Promise<void> {
   io.to(`user:${userId}`).emit("notification", payload);
+
+  if (skipPush && !forcePush) return;
 
   const { removedInvalidSubscriptions } = await sendPushNotifications(
     userId,
@@ -122,7 +125,7 @@ async function deliverNotification(
 }
 
 createNotificationsWorker(async (job) => {
-  const { userId, payload, forcePush, traceContext } =
+  const { userId, payload, forcePush, skipPush, traceContext } =
     job.data as NotificationJobData;
 
   await runWithTraceContext(traceContext, async () =>
@@ -140,7 +143,7 @@ createNotificationsWorker(async (job) => {
           type: payload.type,
           jobId: job.id,
         });
-        await deliverNotification(userId, payload, forcePush);
+        await deliverNotification(userId, payload, forcePush, skipPush);
         const durationMs = Date.now() - start;
         if (durationMs >= SLOW_RPC_MS) {
           log("warn", "Slow notification job", {
