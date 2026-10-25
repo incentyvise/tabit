@@ -185,7 +185,6 @@ export function TabMembersPage() {
     setRemoving(false);
     setRemoveMemberId(null);
     if (result.success) {
-      void invalidateTabData(queryClient, tabId);
       toast.success("Member removed");
     } else {
       toast.error(result.error ?? "Failed to remove member");

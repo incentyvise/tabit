@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavTitle } from "@/app/(app)/context/nav-title-context";
 import { LogExpenseAI } from "@/app/(app)/components/log-expense-ai";
 import { LogExpenseManual } from "@/app/(app)/components/log-expense-manual";
 import { api } from "@/lib/api-client";
 import { ReceiptText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { preferencesQuery, queryKeys } from "@/lib/queries";
+import { preferencesQuery } from "@/lib/queries";
 
 const ADD_EXPENSE_PREFERENCE_KEY = "add_expense_preference";
 
@@ -32,7 +32,6 @@ function setStoredPreference(value: "ai" | "manual") {
 export function LogExpensePage() {
   const setNavTitle = useNavTitle();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: preferences } = useQuery(preferencesQuery());
 
@@ -53,9 +52,7 @@ export function LogExpensePage() {
   const handleEntryModeChange = (mode: "ai" | "manual") => {
     setEntryMode(mode);
     setStoredPreference(mode);
-    api.preferences.update({ addExpensePreference: mode }).then(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
-    });
+    void api.preferences.update({ addExpensePreference: mode });
   };
 
   const handleSuccess = () => {

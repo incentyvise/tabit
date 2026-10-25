@@ -9,7 +9,6 @@ import {
   parseExpenseAmount,
   validateExpenseFormValues,
 } from "@/lib/expense-form";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +67,6 @@ import {
   MakeRecurringExpenseDialog,
   type RecurringTemplatePayload,
 } from "@/components/make-recurring-expense-dialog";
-import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -337,7 +335,6 @@ export function AddExpenseForm({
   } | null>(null);
   const [partialSuccessOpen, setPartialSuccessOpen] = useState(false);
   const skipPartialSheetClose = useRef(false);
-  const queryClient = useQueryClient();
   const descriptionRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -443,7 +440,6 @@ export function AddExpenseForm({
         }
         setSplitConfig(null);
         setPendingRecurring(null);
-        void invalidateTabData(queryClient, tabId);
         onExpenseCreated?.();
         setCreatedExpense({
           expenseId: result.expenseId,
@@ -469,7 +465,6 @@ export function AddExpenseForm({
         }
         setSplitConfig(null);
         setPendingRecurring(null);
-        void invalidateTabData(queryClient, tabId);
         onExpenseCreated?.();
         setPartialSuccessOpen(true);
         return;

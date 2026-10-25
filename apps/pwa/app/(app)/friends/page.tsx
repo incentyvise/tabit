@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@/lib/navigation";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ import { PokeIcon } from "@/components/icons/poke-icon";
 import { TabListItem } from "@/components/tab-list-item";
 import { authClient } from "@/lib/auth-client";
 import { SortDesc } from "lucide-react";
-import { friendsQuery, invalidateMembership, pendingFriendRequestsQuery, queryKeys } from "@/lib/queries";
+import { friendsQuery, pendingFriendRequestsQuery } from "@/lib/queries";
 
 type FriendSort = "expenses" | "recent" | "name";
 
@@ -54,7 +54,6 @@ export function FriendsPage() {
   const [rejectRequestId, setRejectRequestId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<FriendSort>("recent");
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const listInitial = useListEntrance("friends");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
@@ -107,16 +106,12 @@ export function FriendsPage() {
   async function handleAccept(requestId: string) {
     const result = await api.friends.acceptRequest(requestId);
     if (result.success && result.friendTabId) {
-      void invalidateMembership(queryClient);
       navigate(`/tabs/${result.friendTabId}`);
     }
   }
 
   async function handleReject(requestId: string) {
     await api.friends.rejectRequest(requestId);
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.pendingFriendRequests,
-    });
     setRejectRequestId(null);
   }
 

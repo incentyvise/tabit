@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import {
   ExpenseAddedDialog,
   type ExpenseCreatedCloseReason,
 } from "@/components/expense-added-dialog";
-import { invalidateTabData } from "@/lib/queries";
 
 type LogExpenseAIProps = {
   onSuccess: () => void;
@@ -32,7 +30,6 @@ export function LogExpenseAI({
   onCancel,
   showCancelButton = false,
 }: LogExpenseAIProps) {
-  const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
 
@@ -156,7 +153,6 @@ export function LogExpenseAI({
             currency: result.currency,
             participants: result.participants ?? [],
           });
-          if (result.tabId) void invalidateTabData(queryClient, result.tabId);
           setAiInputText("");
         } else if (!result.success) {
           setAiError(result.error);

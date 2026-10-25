@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useGoBack, useParams, Link } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useNavTitle } from "../../../context/nav-title-context";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,12 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { queryKeys, recurringExpenseQuery } from "@/lib/queries";
+import { recurringExpenseQuery } from "@/lib/queries";
 
 export function RecurringExpenseRulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const id = ruleId ?? "";
   const setNavTitle = useNavTitle();
-  const queryClient = useQueryClient();
   const goBack = useGoBack();
   const [status, setStatus] = useState<string>("active");
   const [saving, setSaving] = useState(false);
@@ -50,9 +49,6 @@ export function RecurringExpenseRulePage() {
     setSaving(false);
     if (r.success) {
       toast.success("Saved");
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.recurringExpense(id),
-      });
     } else {
       toast.error(r.error ?? "Save failed");
     }
@@ -65,7 +61,6 @@ export function RecurringExpenseRulePage() {
     const r = await api.recurringExpenses.delete(id);
     if (r.success) {
       toast.success("Rule deleted");
-      queryClient.removeQueries({ queryKey: queryKeys.recurringExpense(id) });
       goBack("/tabs");
     } else {
       toast.error(r.error ?? "Delete failed");

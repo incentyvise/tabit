@@ -266,6 +266,10 @@ self.addEventListener("notificationclick", function (event) {
           try {
             await rpcCall(procedure, { requestId });
             executed = true;
+            // Open windows still hold the old friends/tabs/requests cache.
+            const windows = await self.clients.matchAll({ type: "window" });
+            for (const w of windows)
+              w.postMessage({ type: "MEMBERSHIP_CHANGED" });
           } catch (err) {
             // A 4xx (already handled, expired, …) won't succeed later either.
             rejected =

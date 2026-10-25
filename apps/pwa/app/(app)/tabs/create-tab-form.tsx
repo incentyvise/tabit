@@ -4,7 +4,6 @@ import { createTabSchema } from "models";
 import { useNavigate } from "@/lib/navigation";
 import { api } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
-import { useQueryClient } from "@tanstack/react-query";
 import { zodFieldErrors } from "@/lib/form-zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURATED_CURRENCIES, getCurrency } from "shared";
-import { queryKeys } from "@/lib/queries";
 
 export function CreateTabForm() {
   const { data: session } = authClient.useSession();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const userDefaultCurrency = (
     session?.user as { defaultCurrency?: string | null } | undefined
@@ -50,7 +47,6 @@ export function CreateTabForm() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.tabs });
       navigate(`/tabs/${result.tabId}`);
     },
   });

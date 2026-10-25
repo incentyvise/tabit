@@ -4,7 +4,7 @@ import {
   useSearchParams,
   Link,
 } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { useNavTitle } from "../../../../context/nav-title-context";
 import { useEffect, useState } from "react";
@@ -42,7 +42,7 @@ import {
 } from "@/lib/format-date";
 import { ExpenseReactions } from "@/components/expense-reactions";
 import type { Expense as LedgerExpense } from "@/lib/domain-types";
-import { expenseAuditLogQuery, expenseQuery, invalidateTabData, tabQuery } from "@/lib/queries";
+import { expenseAuditLogQuery, expenseQuery, tabQuery } from "@/lib/queries";
 
 export function ExpensePage() {
   const { tabId, expenseId } = useParams<{
@@ -55,7 +55,6 @@ export function ExpensePage() {
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
   const setNavTitle = useNavTitle();
-  const queryClient = useQueryClient();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -207,9 +206,6 @@ export function ExpensePage() {
     setDeleteLoading(true);
     const result = await api.expenses.delete(tabIdOrEmpty, expenseIdOrEmpty);
     if (result.success) {
-      void invalidateTabData(queryClient, tabIdOrEmpty, {
-        expenseId: expenseIdOrEmpty,
-      });
       toast.success("Expense deleted");
       navigate(`/tabs/${tabIdOrEmpty}`);
     } else {
@@ -222,9 +218,6 @@ export function ExpensePage() {
     setRestoreLoading(true);
     const result = await api.expenses.restore(tabIdOrEmpty, expenseIdOrEmpty);
     if (result.success) {
-      void invalidateTabData(queryClient, tabIdOrEmpty, {
-        expenseId: expenseIdOrEmpty,
-      });
       toast.success("Expense restored");
     } else {
       toast.error(result.error ?? "Failed to restore expense");

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { ReceiptText, ArrowDownAZ } from "lucide-react";
 import {
@@ -30,19 +30,13 @@ import { TabListItem } from "@/components/tab-list-item";
 import { TabListSkeleton } from "@/components/page-skeletons";
 import { formatAppDate } from "@/lib/format-date";
 import { splitSettledTabs } from "@/lib/tab-sections";
-import {
-  invalidateMembership,
-  pendingTabInviteRequestsQuery,
-  queryKeys,
-  tabsQuery,
-} from "@/lib/queries";
+import { pendingTabInviteRequestsQuery, tabsQuery } from "@/lib/queries";
 
 type TabSort = "expenses" | "recent" | "name";
 
 export function TabsPage() {
   const [sortBy, setSortBy] = useState<TabSort>("recent");
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const listInitial = useListEntrance("tabs");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
@@ -125,16 +119,12 @@ export function TabsPage() {
   async function handleAcceptTabInvite(requestId: string) {
     const result = await api.tabInvites.acceptRequest(requestId);
     if (result.success && result.tabId) {
-      void invalidateMembership(queryClient);
       navigate(`/tabs/${result.tabId}`);
     }
   }
 
   async function handleRejectTabInvite(requestId: string) {
     await api.tabInvites.rejectRequest(requestId);
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.pendingTabInviteRequests,
-    });
   }
 
   return (

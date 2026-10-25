@@ -6,6 +6,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { queryClient } from "./lib/query-client";
 import { routeTree } from "./routeTree.gen";
 import { initServiceWorker } from "./lib/sw-update";
+import { initCacheSync } from "./lib/cache-sync";
 
 const router = createRouter({
   routeTree,
@@ -21,6 +22,9 @@ const router = createRouter({
     typeof window === "undefined" ||
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
 });
+
+// Every successful API write refreshes the cached data it affects.
+initCacheSync(queryClient);
 
 // Registered before React renders so update checks also run on login/invite
 // pages, and every screen change doubles as an update check.

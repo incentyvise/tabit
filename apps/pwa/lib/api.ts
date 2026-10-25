@@ -32,6 +32,56 @@ async function call<T extends Record<string, unknown>>(
   }
 }
 
+/**
+ * What a successful mutation changed, so the query cache can be brought up to
+ * date in one place (see `src/lib/cache-sync.ts`) instead of every call site
+ * remembering which keys to invalidate.
+ */
+export type ApiChange =
+  /** Expenses/settlements/members of one tab (balances, lists, summaries). */
+  | { kind: "tab"; tabId: string; expenseId?: string; settlementId?: string }
+  /** Only an expense's reactions. */
+  | { kind: "reaction"; tabId: string; expenseId: string }
+  /** The set of tabs changed (a tab was created). */
+  | { kind: "tabList" }
+  /** Friends, tab invites or tab membership. */
+  | { kind: "membership"; tabId?: string }
+  | { kind: "recurringRule"; ruleId: string; deleted?: boolean }
+  | { kind: "preferences" }
+  /** Name/username/currency/timezone: shown across most screens. */
+  | { kind: "profile" };
+
+type ChangeListener = (change: ApiChange) => void;
+const changeListeners = new Set<ChangeListener>();
+
+export function onApiChange(listener: ChangeListener): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
+/** `call()` for writes: on success, report what changed. */
+async function mutate<T extends Record<string, unknown>>(
+  fn: () => Promise<T>,
+  change: ApiChange | ((data: T) => ApiChange | null),
+): ReturnType<typeof call<T>> {
+  const result = await call(fn);
+  if (result.success) {
+    const c = typeof change === "function" ? change(result as unknown as T) : change;
+    if (c) {
+      for (const listener of changeListeners) {
+        try {
+          listener(c);
+        } catch {
+          // a cache listener must never break the caller
+        }
+      }
+    }
+  }
+  return result;
+}
+
+const membership: ApiChange = { kind: "membership" };
+
 function encodeBase64Url(value: string): string {
   const bytes = new TextEncoder().encode(value);
   let binary = "";
@@ -45,18 +95,18 @@ export const api = {
       call(() => orpcClient.friends.getPendingRequests()),
 
     sendRequest: (username: string) =>
-      call(() => orpcClient.friends.sendRequest({ username })),
+      mutate(() => orpcClient.friends.sendRequest({ username }), membership),
 
     acceptRequest: (requestId: string) =>
-      call(() => orpcClient.friends.acceptRequest({ requestId })),
+      mutate(() => orpcClient.friends.acceptRequest({ requestId }), membership),
 
     rejectRequest: (requestId: string) =>
-      call(() => orpcClient.friends.rejectRequest({ requestId })),
+      mutate(() => orpcClient.friends.rejectRequest({ requestId }), membership),
 
     getToken: () => call(() => orpcClient.friends.getToken()),
 
     addByToken: (token: string) =>
-      call(() => orpcClient.friends.addByToken({ token })),
+      mutate(() => orpcClient.friends.addByToken({ token }), membership),
 
     search: (q: string, options?: { includeFriends?: boolean }) =>
       call(() =>
@@ -87,7 +137,7 @@ export const api = {
       call(() => orpcClient.tabInvites.getByToken({ token })),
 
     joinByToken: (token: string) =>
-      call(() => orpcClient.tabInvites.joinByToken({ token })),
+      mutate(() => orpcClient.tabInvites.joinByToken({ token }), membership),
 
     getToken: (tabId: string) =>
       call(() => orpcClient.tabInvites.getToken({ tabId })),
@@ -96,13 +146,22 @@ export const api = {
       call(() => orpcClient.tabInvites.getPendingRequests()),
 
     sendRequest: (tabId: string, username: string) =>
-      call(() => orpcClient.tabInvites.sendRequest({ tabId, username })),
+      mutate(() => orpcClient.tabInvites.sendRequest({ tabId, username }), {
+        kind: "membership",
+        tabId,
+      }),
 
     acceptRequest: (requestId: string) =>
-      call(() => orpcClient.tabInvites.acceptRequest({ requestId })),
+      mutate(
+        () => orpcClient.tabInvites.acceptRequest({ requestId }),
+        membership,
+      ),
 
     rejectRequest: (requestId: string) =>
-      call(() => orpcClient.tabInvites.rejectRequest({ requestId })),
+      mutate(
+        () => orpcClient.tabInvites.rejectRequest({ requestId }),
+        membership,
+      ),
   },
 
   tabs: {
@@ -117,35 +176,47 @@ export const api = {
       call(() => orpcClient.tabs.getSharedGroupTabs({ tabId })),
 
     create: (name: string, currency?: string) =>
-      call(() =>
-        orpcClient.tabs.create(
-          currency !== undefined ? { name, currency } : { name },
-        ),
+      mutate(
+        () =>
+          orpcClient.tabs.create(
+            currency !== undefined ? { name, currency } : { name },
+          ),
+        { kind: "tabList" },
       ),
 
     update: (tabId: string, updates: { name?: string; currency?: string }) =>
-      call(() => orpcClient.tabs.update({ tabId, updates })),
+      mutate(() => orpcClient.tabs.update({ tabId, updates }), {
+        kind: "tab",
+        tabId,
+      }),
 
     addMember: (tabId: string, email: string, role?: string) =>
-      call(() =>
-        orpcClient.tabs.addMember({
-          tabId,
-          body: {
-            email,
-            role: (role ?? "member") as "owner" | "member",
-          },
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.addMember({
+            tabId,
+            body: {
+              email,
+              role: (role ?? "member") as "owner" | "member",
+            },
+          }),
+        { kind: "membership", tabId },
       ),
 
     removeMember: (tabId: string, userId: string) =>
-      call(() => orpcClient.tabs.removeMember({ tabId, userId })),
+      mutate(() => orpcClient.tabs.removeMember({ tabId, userId }), {
+        kind: "membership",
+        tabId,
+      }),
 
     createPlaceholder: (tabId: string, displayName: string) =>
-      call(() =>
-        orpcClient.tabs.createPlaceholder({
-          tabId,
-          body: { displayName },
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.createPlaceholder({
+            tabId,
+            body: { displayName },
+          }),
+        { kind: "tab", tabId },
       ),
 
     renamePlaceholder: (
@@ -153,12 +224,14 @@ export const api = {
       participantId: string,
       displayName: string,
     ) =>
-      call(() =>
-        orpcClient.tabs.renamePlaceholder({
-          tabId,
-          participantId,
-          body: { displayName },
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.renamePlaceholder({
+            tabId,
+            participantId,
+            body: { displayName },
+          }),
+        { kind: "tab", tabId },
       ),
 
     mergePlaceholder: (
@@ -166,20 +239,23 @@ export const api = {
       participantId: string,
       targetUserId: string,
     ) =>
-      call(() =>
-        orpcClient.tabs.mergePlaceholder({
-          tabId,
-          participantId,
-          body: { targetUserId },
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.mergePlaceholder({
+            tabId,
+            participantId,
+            body: { targetUserId },
+          }),
+        { kind: "membership", tabId },
       ),
 
     listRecurringExpenses: (tabId: string) =>
       call(() => orpcClient.recurringExpenses.listForTab({ tabId })),
 
     createRecurringExpense: (tabId: string, body: Record<string, unknown>) =>
-      call(() =>
-        orpcClient.recurringExpenses.createForTab({ tabId, body }),
+      mutate(
+        () => orpcClient.recurringExpenses.createForTab({ tabId, body }),
+        { kind: "tab", tabId },
       ),
   },
 
@@ -188,10 +264,17 @@ export const api = {
       call(() => orpcClient.recurringExpenses.get({ ruleId })),
 
     update: (ruleId: string, body: Record<string, unknown>) =>
-      call(() => orpcClient.recurringExpenses.update({ ruleId, body })),
+      mutate(() => orpcClient.recurringExpenses.update({ ruleId, body }), {
+        kind: "recurringRule",
+        ruleId,
+      }),
 
     delete: (ruleId: string) =>
-      call(() => orpcClient.recurringExpenses.delete({ ruleId })),
+      mutate(() => orpcClient.recurringExpenses.delete({ ruleId }), {
+        kind: "recurringRule",
+        ruleId,
+        deleted: true,
+      }),
   },
 
   expenses: {
@@ -230,7 +313,11 @@ export const api = {
         expenseDate?: string | Date;
         createRecurringRule?: Record<string, unknown>;
       },
-    ) => call(() => orpcClient.expenses.create({ tabId, body })),
+    ) =>
+      mutate(() => orpcClient.expenses.create({ tabId, body }), {
+        kind: "tab",
+        tabId,
+      }),
 
     createBulk: (
       tabId: string,
@@ -244,7 +331,11 @@ export const api = {
         expenseDate: string;
         participantIds?: string[];
       }>,
-    ) => call(() => orpcClient.expenses.createBulk({ tabId, expenses })),
+    ) =>
+      mutate(() => orpcClient.expenses.createBulk({ tabId, expenses }), {
+        kind: "tab",
+        tabId,
+      }),
 
     update: (
       tabId: string,
@@ -260,21 +351,39 @@ export const api = {
         participantIds?: string[];
         splits?: { userId: string; amount?: number; weight?: number }[];
       },
-    ) => call(() => orpcClient.expenses.update({ tabId, expenseId, body })),
+    ) =>
+      mutate(() => orpcClient.expenses.update({ tabId, expenseId, body }), {
+        kind: "tab",
+        tabId,
+        expenseId,
+      }),
 
     delete: (tabId: string, expenseId: string) =>
-      call(() => orpcClient.expenses.delete({ tabId, expenseId })),
+      mutate(() => orpcClient.expenses.delete({ tabId, expenseId }), {
+        kind: "tab",
+        tabId,
+        expenseId,
+      }),
 
     restore: (tabId: string, expenseId: string) =>
-      call(() => orpcClient.expenses.restore({ tabId, expenseId })),
+      mutate(() => orpcClient.expenses.restore({ tabId, expenseId }), {
+        kind: "tab",
+        tabId,
+        expenseId,
+      }),
 
     addReaction: (tabId: string, expenseId: string, emoji: string) =>
-      call(() =>
-        orpcClient.expenses.addReaction({ tabId, expenseId, emoji }),
+      mutate(
+        () => orpcClient.expenses.addReaction({ tabId, expenseId, emoji }),
+        { kind: "reaction", tabId, expenseId },
       ),
 
     removeReaction: (tabId: string, expenseId: string) =>
-      call(() => orpcClient.expenses.removeReaction({ tabId, expenseId })),
+      mutate(() => orpcClient.expenses.removeReaction({ tabId, expenseId }), {
+        kind: "reaction",
+        tabId,
+        expenseId,
+      }),
   },
 
   settlements: {
@@ -297,13 +406,15 @@ export const api = {
         settlementDate?: string;
       },
     ) =>
-      call(() =>
-        orpcClient.tabs.recordSettlement({
-          tabId,
-          body: { tabId, ...body } as Parameters<
-            typeof orpcClient.tabs.recordSettlement
-          >[0]["body"],
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.recordSettlement({
+            tabId,
+            body: { tabId, ...body } as Parameters<
+              typeof orpcClient.tabs.recordSettlement
+            >[0]["body"],
+          }),
+        { kind: "tab", tabId },
       ),
 
     update: (
@@ -320,18 +431,23 @@ export const api = {
         settlementDate?: string;
       },
     ) =>
-      call(() =>
-        orpcClient.tabs.updateSettlement({
-          tabId,
-          settlementId,
-          body: body as Parameters<
-            typeof orpcClient.tabs.updateSettlement
-          >[0]["body"],
-        }),
+      mutate(
+        () =>
+          orpcClient.tabs.updateSettlement({
+            tabId,
+            settlementId,
+            body: body as Parameters<
+              typeof orpcClient.tabs.updateSettlement
+            >[0]["body"],
+          }),
+        { kind: "tab", tabId, settlementId },
       ),
 
     delete: (tabId: string, settlementId: string) =>
-      call(() => orpcClient.tabs.deleteSettlement({ tabId, settlementId })),
+      mutate(
+        () => orpcClient.tabs.deleteSettlement({ tabId, settlementId }),
+        { kind: "tab", tabId, settlementId },
+      ),
 
     getAuditLog: (tabId: string, settlementId: string) =>
       call(() =>
@@ -349,7 +465,7 @@ export const api = {
       name?: string;
       defaultCurrency?: string | null;
       timezone?: string | null;
-    }) => call(() => orpcClient.profile.update(data)),
+    }) => mutate(() => orpcClient.profile.update(data), { kind: "profile" }),
   },
 
   preferences: {
@@ -358,7 +474,10 @@ export const api = {
     update: (data: {
       addExpensePreference?: "ai" | "manual";
       timezone?: string | null;
-    }) => call(() => orpcClient.preferences.update(data)),
+    }) =>
+      mutate(() => orpcClient.preferences.update(data), {
+        kind: "preferences",
+      }),
   },
 
   username: {
@@ -373,7 +492,9 @@ export const api = {
     },
 
     update: (username: string) =>
-      call(() => orpcClient.username.update({ username })),
+      mutate(() => orpcClient.username.update({ username }), {
+        kind: "profile",
+      }),
   },
 
   push: {
@@ -417,6 +538,12 @@ export const api = {
 
   ai: {
     addExpense: (body: { text: string }) =>
-      call(() => orpcClient.ai.addExpense(body)),
+      mutate(
+        () => orpcClient.ai.addExpense(body),
+        (data): ApiChange | null => {
+          const tabId = (data as { tabId?: unknown }).tabId;
+          return typeof tabId === "string" ? { kind: "tab", tabId } : null;
+        },
+      ),
   },
 };

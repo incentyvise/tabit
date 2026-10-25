@@ -1,6 +1,6 @@
 import { use, useMemo, useEffect, useState, Suspense } from "react";
 import { useNavTitle } from "../../context/nav-title-context";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import { QRSkeleton } from "@/components/page-skeletons";
 import { appConfig } from "@/src/config";
 import QRCode from "qrcode";
 import { friendTokenQuery } from "@/lib/queries";
-import { queryKeys } from "@/lib/queries";
 
 function MyQRCode() {
   const [copied, setCopied] = useState(false);
@@ -151,7 +150,6 @@ export function AddFriendPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const queryClient = useQueryClient();
   const setNavTitle = useNavTitle();
 
   useEffect(() => {
@@ -184,7 +182,6 @@ export function AddFriendPage() {
       setSearchResults((prev) =>
         prev.filter((u) => u.username !== targetUsername),
       );
-      queryClient.invalidateQueries({ queryKey: queryKeys.friends });
     } else {
       setError(result.error ?? "Failed to send request");
     }

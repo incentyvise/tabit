@@ -5,7 +5,6 @@ import { api } from "@/lib/api-client";
 import { useNavTitle } from "../../context/nav-title-context";
 import { Button } from "@/components/ui/button";
 import { InlinePageSkeleton } from "@/components/page-skeletons";
-import { invalidateMembership } from "@/lib/queries";
 
 function AddByQRContent() {
   const navigate = useNavigate();
@@ -42,7 +41,6 @@ function AddByQRContent() {
     api.friends.addByToken(code).then((result) => {
       if (result.success && result.friendTabId) {
         setStatus("success");
-        void invalidateMembership(queryClient);
         navigate(`/tabs/${result.friendTabId}`, { replace: true });
       } else if (!result.success) {
         setStatus("error");
