@@ -24,7 +24,7 @@ import { invalidateMembership, pendingTabInviteRequestsQuery, queryKeys, tabsQue
 type TabSort = "expenses" | "recent" | "name";
 
 export function TabsPage() {
-  const [sortBy, setSortBy] = useState<TabSort>("expenses");
+  const [sortBy, setSortBy] = useState<TabSort>("recent");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const listInitial = useListEntrance("tabs");
@@ -177,8 +177,8 @@ export function TabsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="recent">Most recent</SelectItem>
+                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="name">Alphabetical</SelectItem>
                 </SelectContent>
               </Select>

@@ -52,7 +52,7 @@ function getFirstNameForSort(f: {
 
 export function FriendsPage() {
   const [rejectRequestId, setRejectRequestId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<FriendSort>("expenses");
+  const [sortBy, setSortBy] = useState<FriendSort>("recent");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const listInitial = useListEntrance("friends");
@@ -289,8 +289,8 @@ export function FriendsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="recent">Most recent</SelectItem>
+                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="name">Alphabetical</SelectItem>
                 </SelectContent>
               </Select>
