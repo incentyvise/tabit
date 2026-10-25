@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { useNavTitle } from "../../../../context/nav-title-context";
 import { useEffect, useState } from "react";
@@ -28,7 +28,7 @@ import {
   formatAppDate,
   formatAppDateTime,
 } from "@/lib/format-date";
-import { invalidateTabData, settlementAuditLogQuery, settlementQuery, tabQuery } from "@/lib/queries";
+import { settlementAuditLogQuery, settlementQuery, tabQuery } from "@/lib/queries";
 
 export function SettlementPage() {
   const { tabId, settlementId } = useParams<{
@@ -40,7 +40,6 @@ export function SettlementPage() {
   const navigate = useNavigate();
   const { data: session } = authClient.useSession();
   const setNavTitle = useNavTitle();
-  const queryClient = useQueryClient();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -150,9 +149,6 @@ export function SettlementPage() {
     setDeleteLoading(true);
     const result = await api.settlements.delete(tabIdOrEmpty, settlementIdOrEmpty);
     if (result.success) {
-      void invalidateTabData(queryClient, tabIdOrEmpty, {
-        settlementId: settlementIdOrEmpty,
-      });
       toast.success("Settlement deleted");
       navigate(`/tabs/${tabIdOrEmpty}`);
     } else {

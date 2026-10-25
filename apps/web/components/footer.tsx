@@ -60,7 +60,6 @@ function FooterSection({
 
 export function Footer() {
   const { creator } = appConfig;
-  const currentYear = new Date().getFullYear();
 
   return (
     <footer

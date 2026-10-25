@@ -52,7 +52,6 @@ export function processOfflineQueue(): Promise<void> {
 
 async function drain(): Promise<void> {
   const retryLater: OfflineAction[] = [];
-  let processed = 0;
   let action = await dequeue();
   while (action) {
     let done = false;
@@ -61,13 +60,11 @@ async function drain(): Promise<void> {
     } catch {
       done = false;
     }
-    if (done) processed += 1;
-    else retryLater.push(action);
+    if (!done) retryLater.push(action);
     action = await dequeue();
   }
   // Re-queue after draining so a failing action isn't retried in a tight loop.
   for (const a of retryLater) await putBack(a);
-  if (processed > 0) await invalidateMembership(queryClient);
 }
 
 export function registerOfflineSyncListeners(): () => void {
@@ -77,6 +74,10 @@ export function registerOfflineSyncListeners(): () => void {
   const onMessage = (event: MessageEvent) => {
     if (event.data?.type === "PROCESS_OFFLINE_QUEUE") {
       void processOfflineQueue();
+    }
+    // A push-notification action (accept/reject) ran in the service worker.
+    if (event.data?.type === "MEMBERSHIP_CHANGED") {
+      void invalidateMembership(queryClient);
     }
   };
   window.addEventListener("online", onOnline);

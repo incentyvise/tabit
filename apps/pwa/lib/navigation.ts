@@ -12,6 +12,27 @@ export { useLocation, useRouter };
 
 type NavigateTo = Parameters<ReturnType<typeof useTanStackNavigate>>[0];
 
+/**
+ * An in-app path ("/tabs?x=1"), or `fallback` for anything else: absolute
+ * URLs, protocol-relative "//host", backslash tricks, or missing values.
+ * Use for every redirect target that comes from the URL (callbackURL, returnTo).
+ */
+export function safeInternalPath(
+  value: string | null | undefined,
+  fallback: string,
+): string {
+  if (!value || !value.startsWith("/") || /^\/[\\/]/.test(value)) {
+    return fallback;
+  }
+  try {
+    const url = new URL(value, "https://app.invalid");
+    if (url.origin !== "https://app.invalid") return fallback;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Stable across renders (safe in effect dependency arrays). */
 export function useNavigate() {
   const navigate = useTanStackNavigate();
@@ -26,6 +47,16 @@ export function useNavigate() {
         return;
       }
       if (typeof to === "string") {
+        // `to` is a path only; a query/hash (e.g. a returnTo URL) needs `href`.
+        // Only same-origin paths go through `href`, which would otherwise
+        // follow an absolute URL off-site.
+        if (/[?#]/.test(to)) {
+          return router.navigate({
+            href: safeInternalPath(to, "/tabs"),
+            replace: options?.replace,
+            state: options?.state,
+          } as NavigateOptions);
+        }
         return navigate({
           to,
           replace: options?.replace,

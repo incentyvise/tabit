@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { z } from "zod";
 import { usernameSchema } from "models";
-import { useNavigate, useSearchParams } from "@/lib/navigation";
+import {
+  useNavigate,
+  useSearchParams,
+  safeInternalPath,
+} from "@/lib/navigation";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api-client";
 import { needsProfileSetup } from "@/lib/profile";
@@ -124,7 +128,6 @@ export function OnboardingPage() {
   );
 
   const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-  const DISABLE_REDIRECT = false; // TODO: remove - temp disable to view page
 
   useEffect(() => {
     setPlatform(getPlatform());
@@ -190,10 +193,9 @@ export function OnboardingPage() {
       navigate("/login", { replace: true });
       return;
     }
-    if (!DISABLE_REDIRECT && !needsProfileSetup(session.user) && step !== 2) {
-      const returnTo = searchParams.get("returnTo");
-      const safeReturn =
-        returnTo && returnTo !== "/onboarding" ? returnTo : "/tabs";
+    if (!needsProfileSetup(session.user) && step !== 2) {
+      const returnTo = safeInternalPath(searchParams.get("returnTo"), "/tabs");
+      const safeReturn = returnTo.startsWith("/onboarding") ? "/tabs" : returnTo;
       navigate(safeReturn, { replace: true });
     }
   }, [session, sessionPending, navigate, searchParams, step]);
@@ -222,9 +224,8 @@ export function OnboardingPage() {
   }, [username]);
 
   function handleStep2Continue() {
-    const returnTo = searchParams.get("returnTo");
-    const safeReturn =
-      returnTo && returnTo !== "/onboarding" ? returnTo : "/tabs";
+    const returnTo = safeInternalPath(searchParams.get("returnTo"), "/tabs");
+    const safeReturn = returnTo.startsWith("/onboarding") ? "/tabs" : returnTo;
     navigate(safeReturn, { replace: true });
   }
 
@@ -270,7 +271,7 @@ export function OnboardingPage() {
   if (sessionPending || !session?.user) {
     return null;
   }
-  if (!DISABLE_REDIRECT && !needsProfileSetup(session.user) && step === 1) {
+  if (!needsProfileSetup(session.user) && step === 1) {
     return null;
   }
 

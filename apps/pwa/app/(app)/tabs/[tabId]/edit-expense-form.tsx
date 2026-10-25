@@ -8,7 +8,6 @@ import {
   resolveExpensePayerParticipantId,
   validateExpenseFormValues,
 } from "@/lib/expense-form";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@/lib/navigation";
 import { useExpenseFxPreview } from "@/lib/use-expense-fx-preview";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,6 @@ import {
   splitConfigLabel,
   type SplitConfig,
 } from "@/components/split-dialog";
-import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -187,7 +185,6 @@ export function EditExpenseForm({
   const [deleting, setDeleting] = useState(false);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const tabParticipants = useMemo((): TabParticipant[] => {
     if (participants.length > 0) return participants;
@@ -242,7 +239,6 @@ export function EditExpenseForm({
       const result = await api.expenses.update(tabId, expenseId, updateBody);
 
       if (result.success) {
-        void invalidateTabData(queryClient, tabId, { expenseId });
         toast.success("Expense updated");
         if (onSuccess) onSuccess();
         else navigate(`/tabs/${tabId}`);
@@ -391,7 +387,6 @@ export function EditExpenseForm({
     setDeleting(true);
     const result = await api.expenses.delete(tabId, expenseId);
     if (result.success) {
-      void invalidateTabData(queryClient, tabId, { expenseId });
       toast.success("Expense deleted");
       const cb = onDeleteSuccess ?? onSuccess;
       if (cb) cb();

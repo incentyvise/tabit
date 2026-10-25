@@ -1,3 +1,4 @@
+import "@fontsource-variable/inter/wght.css";
 import "./globals.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -5,6 +6,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { queryClient } from "./lib/query-client";
 import { routeTree } from "./routeTree.gen";
 import { initServiceWorker } from "./lib/sw-update";
+import { initCacheSync } from "./lib/cache-sync";
 
 const router = createRouter({
   routeTree,
@@ -14,7 +16,15 @@ const router = createRouter({
   // <main> does. Reset it on push navigation and restore it on back/forward.
   scrollRestoration: true,
   scrollToTopSelectors: ['[data-scroll-restoration-id="app-main"]'],
+  // Short cross-fade between screens where supported (see globals.css);
+  // skipped for users who prefer reduced motion.
+  defaultViewTransition:
+    typeof window === "undefined" ||
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
 });
+
+// Every successful API write refreshes the cached data it affects.
+initCacheSync(queryClient);
 
 // Registered before React renders so update checks also run on login/invite
 // pages, and every screen change doubles as an update check.

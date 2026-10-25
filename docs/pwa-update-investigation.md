@@ -73,7 +73,10 @@ retired assets so old clients degrade gracefully.
 | 8 | Manifest: `id`, `display_override`, `orientation`, `categories`, separate padded `maskable` icon; 180px `apple-touch-icon`. | gaps |
 | 9 | nginx keeps retired hashed assets: on container start a `docker-entrypoint.d` script copies `/assets/*` into a persistent volume and prunes files older than 14 days; `/assets/` misses fall back to that volume. Compose mounts `pwa-assets`. | F1–F3 for clients without the new code |
 
-Not changed (product decision): `user-scalable=no` in the viewport.
+Follow-up (2026-10): `user-scalable=no` / `maximum-scale=1` removed from the
+viewport; inputs stay at ≥16px on touch devices so iOS doesn't zoom on focus.
+Inter is now self-hosted (the Google Fonts stylesheet was loaded but never
+applied, because `--font-inter` was undefined).
 
 ### Verification
 

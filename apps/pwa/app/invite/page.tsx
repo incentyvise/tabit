@@ -7,7 +7,6 @@ import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { getDisplayName } from "@/lib/display-name";
-import { invalidateMembership } from "@/lib/queries";
 
 function InviteContent() {
   const navigate = useNavigate();
@@ -90,7 +89,6 @@ function InviteContent() {
       requestedRef.current = true;
       api.friends.addByToken(qrParam).then((result) => {
         if (result.success && result.friendTabId) {
-          void invalidateMembership(queryClient);
           navigate(`/tabs/${result.friendTabId}`, { replace: true });
         } else if (!result.success) {
           setStatus("error");
@@ -125,7 +123,6 @@ function InviteContent() {
     const result = await api.tabInvites.joinByToken(tokenParam);
     setAccepting(false);
     if (result.success && result.tabId) {
-      void invalidateMembership(queryClient);
       if (result.alreadyMember) {
         navigate(`/tabs/${result.tabId}`, { replace: true });
       } else {

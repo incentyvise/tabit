@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@/lib/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { ReceiptText, ArrowDownAZ } from "lucide-react";
 import {
@@ -11,22 +11,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth-client";
 import { motion } from "framer-motion";
-import { staggerContainer, staggerItemAt, useListEntrance } from "@/lib/animations";
+import {
+  staggerContainer,
+  staggerItemAt,
+  useListEntrance,
+} from "@/lib/animations";
 import { AnimatedCard } from "@/components/motion/animated-card";
 import { TabListItem } from "@/components/tab-list-item";
 import { TabListSkeleton } from "@/components/page-skeletons";
 import { formatAppDate } from "@/lib/format-date";
-import { invalidateMembership, pendingTabInviteRequestsQuery, queryKeys, tabsQuery } from "@/lib/queries";
+import { splitSettledTabs } from "@/lib/tab-sections";
+import { pendingTabInviteRequestsQuery, tabsQuery } from "@/lib/queries";
 
 type TabSort = "expenses" | "recent" | "name";
 
 export function TabsPage() {
-  const [sortBy, setSortBy] = useState<TabSort>("expenses");
+  const [sortBy, setSortBy] = useState<TabSort>("recent");
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const listInitial = useListEntrance("tabs");
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? "";
@@ -35,6 +45,7 @@ export function TabsPage() {
     name: string;
     currency?: string;
     balance?: number;
+    isSettled?: boolean;
     memberUserIds?: string[];
     expenseCount?: number;
     lastExpenseDate?: string | null;
@@ -74,22 +85,46 @@ export function TabsPage() {
     }
     return arr;
   }, [tabs, sortBy]);
+  const { active: activeTabs, settled: settledTabs } = useMemo(
+    () => splitSettledTabs(sortedTabs),
+    [sortedTabs],
+  );
   const { data: tabInvitesData } = useQuery(pendingTabInviteRequestsQuery());
-  const pendingTabInvites = (tabInvitesData ?? []) as unknown as TabInviteItem[];
+  const pendingTabInvites = (tabInvitesData ??
+    []) as unknown as TabInviteItem[];
+
+  function renderTab(t: TabItem, i: number) {
+    return (
+      <motion.div key={t.id} variants={staggerItemAt(i)}>
+        <AnimatedCard>
+          <TabListItem
+            item={{
+              type: "group",
+              id: t.id,
+              name: t.name,
+              balance: t.balance ?? 0,
+              currency: t.currency ?? "USD",
+              expenseCount: t.expenseCount ?? 0,
+              lastExpenseDate: t.lastExpenseDate,
+              memberUserIds: t.memberUserIds,
+            }}
+            currentUserId={currentUserId}
+            href={`/tabs/${t.id}`}
+          />
+        </AnimatedCard>
+      </motion.div>
+    );
+  }
 
   async function handleAcceptTabInvite(requestId: string) {
     const result = await api.tabInvites.acceptRequest(requestId);
     if (result.success && result.tabId) {
-      void invalidateMembership(queryClient);
       navigate(`/tabs/${result.tabId}`);
     }
   }
 
   async function handleRejectTabInvite(requestId: string) {
     await api.tabInvites.rejectRequest(requestId);
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.pendingTabInviteRequests,
-    });
   }
 
   return (
@@ -177,8 +212,8 @@ export function TabsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="recent">Most recent</SelectItem>
+                  <SelectItem value="expenses">Most expenses</SelectItem>
                   <SelectItem value="name">Alphabetical</SelectItem>
                 </SelectContent>
               </Select>
@@ -197,29 +232,40 @@ export function TabsPage() {
               initial={listInitial}
               animate="animate"
             >
-              {sortedTabs.map((t, i) => (
-                <motion.div key={t.id} variants={staggerItemAt(i)}>
-                  <AnimatedCard>
-                    <TabListItem
-                      item={{
-                        type: "group",
-                        id: t.id,
-                        name: t.name,
-                        balance: t.balance ?? 0,
-                        currency: t.currency ?? "USD",
-                        expenseCount: t.expenseCount ?? 0,
-                        lastExpenseDate: t.lastExpenseDate,
-                        memberUserIds: t.memberUserIds,
-                      }}
-                      currentUserId={currentUserId}
-                      href={`/tabs/${t.id}`}
-                    />
-                  </AnimatedCard>
-                </motion.div>
-              ))}
+              {activeTabs.length === 0 && (
+                <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  Everything's settled. Older tabs are under Settled below.
+                </p>
+              )}
+              {activeTabs.map((t, i) => renderTab(t, i))}
             </motion.div>
           )}
         </section>
+
+        {settledTabs.length > 0 && (
+          <section>
+            {/* Collapsed by default; long-settled tabs are rarely needed. */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="settled" className="border-b-0">
+                <AccordionTrigger className="py-2 hover:no-underline">
+                  <span className="block min-w-0 text-left">
+                    <span className="block text-base font-semibold text-foreground">
+                      Settled ({settledTabs.length})
+                    </span>
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                      All square, no activity in the last 7 days
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pb-0 pt-3">
+                  <div className="flex flex-col gap-3">
+                    {settledTabs.map((t, i) => renderTab(t, i))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </section>
+        )}
       </div>
     </div>
   );

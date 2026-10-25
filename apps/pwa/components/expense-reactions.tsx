@@ -1,7 +1,6 @@
 "use client";
 
 import { lazy, Suspense, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import type { Theme } from "emoji-picker-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +15,6 @@ import { api } from "@/lib/api-client";
 import type { ExpenseReaction } from "@/lib/domain-types";
 import { SmilePlus } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
-import { queryKeys } from "@/lib/queries";
 
 // ~300 KB: load only when a picker is opened, not with every expense list.
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
@@ -112,18 +110,9 @@ export function ExpenseReactions({
   compact = false,
   getDisplayName,
 }: ExpenseReactionsProps) {
-  const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerTheme = (resolvedTheme === "light" ? "light" : "dark") as Theme;
-
-  // Reactions don't touch balances/totals: only the expense + list views.
-  function invalidate() {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.expense(tabId, expenseId),
-    });
-    queryClient.invalidateQueries({ queryKey: queryKeys.expenseLists(tabId) });
-  }
 
   async function handleReactionClick(emoji: string) {
     const existing = reactions.find((r) => r.emoji === emoji);
@@ -132,11 +121,9 @@ export function ExpenseReactions({
     setPickerOpen(false);
 
     if (hasCurrentUser) {
-      const result = await api.expenses.removeReaction(tabId, expenseId);
-      if (result.success) invalidate();
+      await api.expenses.removeReaction(tabId, expenseId);
     } else {
-      const result = await api.expenses.addReaction(tabId, expenseId, emoji);
-      if (result.success) invalidate();
+      await api.expenses.addReaction(tabId, expenseId, emoji);
     }
   }
 
@@ -224,11 +211,7 @@ export function ExpenseReactions({
                 className="w-full justify-center shrink-0"
                 onClick={async () => {
                   setPickerOpen(false);
-                  const result = await api.expenses.removeReaction(
-                    tabId,
-                    expenseId,
-                  );
-                  if (result.success) invalidate();
+                  await api.expenses.removeReaction(tabId, expenseId);
                 }}
               >
                 Remove reaction

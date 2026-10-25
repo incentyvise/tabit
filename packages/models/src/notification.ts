@@ -15,6 +15,7 @@ export const notificationTypeSchema = z.enum([
   "expense_reaction",
   "recurring_rule_needs_fix",
   "placeholder_merged",
+  "settlement_changed",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -324,6 +325,27 @@ export type PlaceholderMergedNotificationPayload = z.infer<
   typeof placeholderMergedNotificationPayloadSchema
 >;
 
+export const settlementChangedNotificationPayloadSchema = z.object({
+  type: z.literal("settlement_changed"),
+  action: z.enum(["recorded", "updated", "deleted"]),
+  tabId: z.string(),
+  settlementId: z.string(),
+  tabName: z.string(),
+  isDirect: z.boolean().optional(),
+  fromUserId: z.string(),
+  fromUserName: z.string().nullable(),
+  payerName: z.string(),
+  payeeName: z.string(),
+  amount: z.string(),
+  currencySymbol: z.string().optional(),
+  /** True when the recipient is the payer or payee (the payment involves them). */
+  involvesRecipient: z.boolean().optional(),
+  createdAt: z.string(),
+});
+export type SettlementChangedNotificationPayload = z.infer<
+  typeof settlementChangedNotificationPayloadSchema
+>;
+
 export const notificationPayloadSchema = z.discriminatedUnion("type", [
   friendRequestNotificationPayloadSchema,
   tabInviteNotificationPayloadSchema,
@@ -339,6 +361,7 @@ export const notificationPayloadSchema = z.discriminatedUnion("type", [
   expenseReactionNotificationPayloadSchema,
   recurringRuleNeedsFixNotificationPayloadSchema,
   placeholderMergedNotificationPayloadSchema,
+  settlementChangedNotificationPayloadSchema,
 ]);
 export type NotificationPayload = z.infer<typeof notificationPayloadSchema>;
 
@@ -668,6 +691,39 @@ export function createPlaceholderMergedNotificationPayload(data: {
     fromUserName: data.fromUserName,
     placeholderDisplayName: data.placeholderDisplayName,
     targetDisplayName: data.targetDisplayName,
+    createdAt: data.createdAt.toISOString(),
+  };
+}
+
+export function createSettlementChangedNotificationPayload(data: {
+  action: SettlementChangedNotificationPayload["action"];
+  tabId: string;
+  settlementId: string;
+  tabName: string;
+  isDirect?: boolean;
+  fromUserId: string;
+  fromUserName: string | null;
+  payerName: string;
+  payeeName: string;
+  amount: string;
+  currencySymbol?: string;
+  involvesRecipient?: boolean;
+  createdAt: Date;
+}): SettlementChangedNotificationPayload {
+  return {
+    type: "settlement_changed",
+    action: data.action,
+    tabId: data.tabId,
+    settlementId: data.settlementId,
+    tabName: data.tabName,
+    isDirect: data.isDirect,
+    fromUserId: data.fromUserId,
+    fromUserName: data.fromUserName,
+    payerName: data.payerName,
+    payeeName: data.payeeName,
+    amount: data.amount,
+    currencySymbol: data.currencySymbol,
+    involvesRecipient: data.involvesRecipient,
     createdAt: data.createdAt.toISOString(),
   };
 }

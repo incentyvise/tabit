@@ -6,7 +6,6 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { recordSettlementSchema } from "models";
 import { api } from "@/lib/api-client";
 import { zodFieldErrors } from "@/lib/form-zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +36,6 @@ import { CURATED_CURRENCIES, getCurrency, simplifyDebts } from "shared";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Balance } from "@/lib/domain-types";
-import { invalidateTabData } from "@/lib/queries";
 
 type TabParticipant = {
   id: string;
@@ -162,7 +160,6 @@ export function SettleUpForm({
   onSuccess?: () => void;
 }) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const suggestedTransfers = buildSuggestedTransfers(balances, tabCurrency);
   const defaults = defaultSettleUpValues(
@@ -225,7 +222,6 @@ export function SettleUpForm({
         form.reset();
         form.setFieldValue("currency", tabCurrency);
         form.setFieldValue("settlementDate", new Date());
-        void invalidateTabData(queryClient, tabId);
         toast.success("Settlement recorded");
         onSuccess?.();
         return;

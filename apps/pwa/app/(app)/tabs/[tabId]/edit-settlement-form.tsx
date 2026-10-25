@@ -3,7 +3,6 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { updateSettlementSchema } from "models";
 import { api } from "@/lib/api-client";
 import { zodFieldErrors } from "@/lib/form-zod";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@/lib/navigation";
 import { useExpenseFxPreview } from "@/lib/use-expense-fx-preview";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,6 @@ import {
 } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Settlement } from "@/lib/domain-types";
-import { invalidateTabData } from "@/lib/queries";
 
 type Member = {
   userId: string;
@@ -131,7 +129,6 @@ export function EditSettlementForm({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const queryClient = useQueryClient();
 
   const tabParticipants = useMemo((): TabParticipant[] => {
     if (participants.length > 0) return participants;
@@ -216,7 +213,6 @@ export function EditSettlementForm({
       });
 
       if (result.success) {
-        void invalidateTabData(queryClient, tabId, { settlementId });
         toast.success("Settlement updated");
         if (onSuccess) onSuccess();
         else navigate(`/tabs/${tabId}`);
@@ -276,7 +272,6 @@ export function EditSettlementForm({
     setDeleting(true);
     const result = await api.settlements.delete(tabId, settlementId);
     if (result.success) {
-      void invalidateTabData(queryClient, tabId, { settlementId });
       toast.success("Settlement deleted");
       const cb = onDeleteSuccess ?? onSuccess;
       if (cb) cb();

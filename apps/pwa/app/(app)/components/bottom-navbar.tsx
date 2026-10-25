@@ -170,7 +170,7 @@ export function BottomNavbar({ connectionState }: BottomNavbarProps) {
     : "w-full max-w-sm overflow-visible rounded-full";
 
   return (
-    <nav className="bottom-nav-safe fixed bottom-4 left-0 right-0 z-40 flex justify-center overflow-visible px-4 pt-2">
+    <nav className="app-bottom-nav bottom-nav-safe fixed bottom-4 left-0 right-0 z-40 flex justify-center overflow-visible px-4 pt-2">
       <div className={wrapperClass}>{navbarContent}</div>
     </nav>
   );

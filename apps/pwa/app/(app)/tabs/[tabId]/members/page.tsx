@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { getDisplayName } from "@/lib/display-name";
 import { PlaceholderParticipantsCard } from "../placeholder-participants-card";
-import { invalidateTabData, queryKeys, tabInviteTokenQuery, tabQuery } from "@/lib/queries";
+import { queryKeys, tabInviteTokenQuery, tabQuery } from "@/lib/queries";
 
 function TabQRCode({ tabId }: { tabId: string }) {
   const [copied, setCopied] = useState(false);
@@ -185,7 +185,6 @@ export function TabMembersPage() {
     setRemoving(false);
     setRemoveMemberId(null);
     if (result.success) {
-      void invalidateTabData(queryClient, tabId);
       toast.success("Member removed");
     } else {
       toast.error(result.error ?? "Failed to remove member");
@@ -361,7 +360,6 @@ export function TabMembersPage() {
             tabIdOrEmpty={tabId}
             tab={tab}
             currentUserId={currentUserId}
-            onSuccess={() => void invalidateTabData(queryClient, tabId)}
           />
         )}
 

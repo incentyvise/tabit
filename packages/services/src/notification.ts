@@ -16,12 +16,13 @@ import {
   createTabInviteAcceptedNotificationPayload,
   createRecurringRuleNeedsFixNotificationPayload,
   createPlaceholderMergedNotificationPayload,
+  createSettlementChangedNotificationPayload,
 } from "models";
 
 async function publish(
   userId: string,
   payload: NotificationPayload,
-  options?: { forcePush?: boolean },
+  options?: { forcePush?: boolean; skipPush?: boolean },
 ): Promise<void> {
   spanEvent("notification.enqueued", { userId, type: payload.type });
   await enqueueNotification(userId, payload, options);
@@ -256,5 +257,14 @@ export const notificationService = {
   ): Promise<void> => {
     const payload = createPlaceholderMergedNotificationPayload(params);
     await publish(userId, payload);
+  },
+
+  publishSettlementChangedToUser: async (
+    userId: string,
+    params: Parameters<typeof createSettlementChangedNotificationPayload>[0],
+    options: { push: boolean },
+  ): Promise<void> => {
+    const payload = createSettlementChangedNotificationPayload(params);
+    await publish(userId, payload, { skipPush: !options.push });
   },
 };

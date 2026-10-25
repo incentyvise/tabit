@@ -14,13 +14,16 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsc",
-    "check": "tsc --noEmit"
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
   }
 }

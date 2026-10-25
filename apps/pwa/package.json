@@ -11,12 +11,15 @@
     "start": "vite preview --port 3003",
     "start:prod": "vite preview --port 3003 --host",
     "check": "tsc --noEmit && eslint .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.0.0",
     "@dicebear/collection": "^9.4.0",
     "@dicebear/core": "^9.4.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@orpc/client": "^1.14.4",
     "@orpc/tanstack-query": "^1.14.4",

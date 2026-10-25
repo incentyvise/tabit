@@ -56,11 +56,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import QRCode from "qrcode";
-import { CURATED_CURRENCIES, getCurrency, formatAmount } from "shared";
+import { CURATED_CURRENCIES, getCurrency } from "shared";
 import { useBustCache } from "@/lib/use-bust-cache";
 import { getSupportedIanaTimeZones } from "@/lib/iana-timezones";
-import { useQueryClient } from "@tanstack/react-query";
-import { friendTokenQuery, preferencesQuery, queryKeys } from "@/lib/queries";
+import { friendTokenQuery, preferencesQuery } from "@/lib/queries";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{5,12}$/;
 
@@ -114,7 +113,6 @@ export function MePage() {
   const [timezone, setTimezone] = useState("UTC");
   const [timezoneLoading, setTimezoneLoading] = useState(false);
   const setNavTitle = useNavTitle();
-  const queryClient = useQueryClient();
 
   const { data: prefsData, isPending: preferencesPending } = useQuery(
     preferencesQuery(),
@@ -264,7 +262,6 @@ export function MePage() {
     });
     setTimezoneLoading(false);
     if (result.success) {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.preferences });
       toast.success("Timezone updated");
     } else {
       setTimezone(previous);
