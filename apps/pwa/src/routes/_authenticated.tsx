@@ -15,6 +15,7 @@ import { PushResubscriptionProvider } from "@/app/(app)/context/push-resubscript
 import { TopNavbar } from "@/app/(app)/components/top-navbar";
 import { BottomNavbar } from "@/app/(app)/components/bottom-navbar";
 import { LoadingScreen } from "@/app/(app)/components/loading-screen";
+import { OfflineBanner } from "@/app/(app)/components/offline-banner";
 import type { ConnectionState } from "@/src/lib/realtime-manager";
 import { useNavStore } from "@/lib/stores/nav-store";
 import { ensureCacheOwner } from "@/lib/session-cache";
@@ -114,6 +115,7 @@ function AuthenticatedShell({
   return (
     <div className="app-shell fixed inset-0 flex flex-col">
       {!isOnboarding && <TopNavbar />}
+      {!isOnboarding && <OfflineBanner />}
       <main
         data-scroll-restoration-id="app-main"
         className={

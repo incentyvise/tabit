@@ -11,7 +11,7 @@ import {
   registerRoute,
   setCatchHandler,
 } from "workbox-routing";
-import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
+import { CacheFirst } from "workbox-strategies";
 import type { WorkboxPlugin } from "workbox-core";
 import { getLastCheckTime, setLastCheckTime } from "../lib/periodic-sync-store";
 import { RpcHttpError, rpcCall } from "../lib/rpc-fetch";
@@ -43,24 +43,20 @@ const denylist = [/^\/rpc(\/|$)/, /^\/api\//, /^\/healthz$/];
 const handler = createHandlerBoundToURL("/index.html");
 registerRoute(new NavigationRoute(handler, { allowlist, denylist }));
 
-// Google Fonts (Inter): keep the stylesheet fresh, cache font files for good
-// so text renders offline and without a network round-trip on launch.
-const cacheOkOrOpaque: WorkboxPlugin = {
-  cacheWillUpdate: async ({ response }) =>
-    response.status === 200 || response.type === "opaque" ? response : null,
-};
+// Inter is self-hosted. Latin subsets are precached; other unicode-range
+// subsets (Cyrillic, Greek, …) are fetched on demand and kept, since their
+// hashed filenames never change content.
 registerRoute(
-  ({ url }) => url.origin === "https://fonts.googleapis.com",
-  new StaleWhileRevalidate({
-    cacheName: "google-fonts-stylesheets",
-    plugins: [cacheOkOrOpaque],
-  }),
-);
-registerRoute(
-  ({ url }) => url.origin === "https://fonts.gstatic.com",
+  ({ request, url }) =>
+    request.destination === "font" && url.origin === self.location.origin,
   new CacheFirst({
-    cacheName: "google-fonts-webfonts",
-    plugins: [cacheOkOrOpaque],
+    cacheName: "fonts",
+    plugins: [
+      {
+        cacheWillUpdate: async ({ response }) =>
+          response.status === 200 ? response : null,
+      } satisfies WorkboxPlugin,
+    ],
   }),
 );
 

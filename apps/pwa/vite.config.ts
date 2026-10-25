@@ -81,6 +81,12 @@ export default defineConfig({
       },
       injectManifest: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        globPatterns: [
+          "**/*.{js,css,html}",
+          // Only the Latin Inter subsets; the rest are runtime-cached.
+          "assets/inter-latin-wght-normal-*.woff2",
+          "assets/inter-latin-ext-wght-normal-*.woff2",
+        ],
       },
       includeAssets: [
         "favicon.ico",
