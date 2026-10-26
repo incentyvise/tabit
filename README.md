@@ -1,3 +1,5 @@
+<img src="apps/pwa/public/icon-512x512.png" alt="Tab logo" width="96" height="96">
+
 # Tab
 
 Split expenses with friends. Open source, self-hostable, and built for the long run.
