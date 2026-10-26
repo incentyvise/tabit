@@ -1,6 +1,7 @@
 {
   "name": "tabit",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "build": "turbo build --concurrency=1 --filter=!web",
     "build:app": "turbo build --concurrency=1 --filter=api --filter=pwa --filter=workers",

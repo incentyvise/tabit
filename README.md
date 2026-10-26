@@ -315,4 +315,4 @@ Contributions are welcome. Open an issue to report bugs or suggest features. Pul
 
 ## License
 
-See the LICENSE file in the repository.
+Tab is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). You are free to use, self-host, modify, and redistribute it. If you run a modified version as a network service, you must make your modified source available to its users under the same license.
