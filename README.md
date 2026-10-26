@@ -41,8 +41,8 @@ Commercial expense-splitting apps can change the rules overnight. Free tiers get
 
 - [x] Progressive Web App (install on iOS, Android, desktop)
 - [x] AI-powered voice expense entry
-- [x] Real-time notifications via WebSocket and web push
-- [] Offline-first with IndexedDB persistence
+- [x] Real-time notifications via Socket.IO and web push
+- [ ] Offline-first with IndexedDB persistence
 - [x] Emoji reactions on expenses
 
 ### Social and Collaboration
@@ -63,23 +63,24 @@ Commercial expense-splitting apps can change the rules overnight. Free tiers get
 
 For local development:
 
-**Prerequisites:** Node.js 24+, pnpm, PostgreSQL, Redis
+**Prerequisites:** Node.js 26+, pnpm 10, PostgreSQL, Redis, [Doppler CLI](https://docs.doppler.com/docs/install-cli) (dev scripts run through `doppler run`)
 
 ```bash
 # 1. Install dependencies
 pnpm install
 
 # 2. Build shared packages
-pnpm build --filter=models --filter=db
+pnpm build:packages
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env with DATABASE_URL, BETTER_AUTH_SECRET, SEQUENZY_API_KEY, CORS_ORIGIN, etc.
+# Edit .env with DATABASE_URL, REDIS_URL, BETTER_AUTH_SECRET, SEQUENZY_API_KEY, CORS_ORIGIN, etc.
+# Or load the same values into Doppler with `doppler setup` in each app.
 
-# 4. Run migrations
-cd packages/db && pnpm db:push
+# 4. Push the schema to your database
+pnpm db:push
 
-# 5. Start dev servers
+# 5. Start dev servers (api, workers, pwa)
 pnpm dev
 
 # 6. Run tests
@@ -90,16 +91,19 @@ The app runs at:
 
 - PWA: http://localhost:3003
 - API: http://localhost:3001
-- Notifications WebSocket: ws://localhost:3002
+- Workers (Socket.IO realtime): http://localhost:3002
+- Admin console: http://localhost:3004 (`pnpm dev:admin`)
+- Landing page: http://localhost:3000 (`pnpm dev:web`)
 
 ## Self-Hosting with Docker Compose
 
-Deploy Tab on your own infrastructure. You provide PostgreSQL; Docker Compose runs the rest.
+Deploy Tab on your own infrastructure. You provide PostgreSQL and Redis; Docker Compose builds and runs the api, workers, pwa, and admin services from [cloud-docker-compose.yml](cloud-docker-compose.yml).
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker and Docker Compose (BuildKit enabled)
 - PostgreSQL database (managed service like Neon, Supabase, or self-hosted)
+- Redis
 - Email service for magic links (Sequenzy)
 - Domain name (optional but recommended for production)
 
@@ -115,27 +119,31 @@ cp .env.example .env
 
 Edit `.env` with your values. Required variables:
 
-| Variable                    | Description                                       |
-| --------------------------- | ------------------------------------------------- |
-| `DATABASE_URL`              | PostgreSQL connection string                      |
-| `BETTER_AUTH_SECRET`        | Secret for auth (min 32 characters)               |
-| `VITE_BACKEND_URL`          | Backend API URL (e.g. https://api.yourdomain.com) |
-| `SEQUENZY_API_KEY`          | Sequenzy API key for OTP emails                   |
-| `CORS_ORIGIN`               | Allowed origins for API (your PWA URL)            |
-| `NEXT_PUBLIC_PWA_URL`       | Public PWA URL                                    |
-| `VITE_NOTIFICATIONS_WS_URL` | WebSocket URL (e.g. wss://ws.yourdomain.com)      |
+| Variable              | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| Variable              | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| `DATABASE_URL`        | PostgreSQL connection string                             |
+| `REDIS_URL`           | Redis connection string                                  |
+| `BETTER_AUTH_SECRET`  | Secret for auth (min 32 characters)                      |
+| `VITE_API_URL`        | API URL (e.g. https://api.yourdomain.com)                |
+| `VITE_REALTIME_URL`   | Workers Socket.IO URL (e.g. https://wrk.yourdomain.com)  |
+| `SEQUENZY_API_KEY`    | Sequenzy API key for OTP emails                          |
+| `CORS_ORIGIN`         | Allowed origins for API and workers (your PWA URL)       |
+| `NEXT_PUBLIC_PWA_URL` | Public PWA URL                                           |
+| `ADMIN_EMAILS`        | Emails allowed into the admin console                    |
 
-Redis is included in the compose stack. `REDIS_URL` is set automatically for the api and notifications services.
+The PWA and admin are static Vite bundles, so their `VITE_*` values are baked in at build time (via Doppler build args `DOPPLER_TOKEN_PWA` / `DOPPLER_TOKEN_ADMIN`, or build args in the compose file). The api and workers read their env at runtime.
 
-Optional: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` for web push; `GOOGLE_GENERATIVE_AI_API_KEY` for AI expense parsing; `TIMEZONE_IP_LOOKUP=0` on the API to skip optional IP-based timezone suggestion for profile preferences (proxy headers such as `CF-Timezone` are still honored when present).
+Optional: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` for web push; `DISCORD_WEBHOOK_URL` for ops alerts; `GOOGLE_GENERATIVE_AI_API_KEY` for AI expense parsing; `TIMEZONE_IP_LOOKUP=0` on the API to skip optional IP-based timezone suggestion for profile preferences (proxy headers such as `CF-Timezone` are still honored when present).
 
 ### Step 3: Start the Stack
 
 ```bash
-docker compose up -d
+docker compose -f cloud-docker-compose.yml up -d --build
 ```
 
-The API container runs database migrations on startup. Services start in order: Redis, API, notifications, PWA.
+The API container runs database migrations before it starts listening. The api and workers expose `/health` for container health checks.
 
 ### Step 4: Access the App
 
@@ -145,13 +153,14 @@ The compose file exposes services on an internal network. To access the PWA:
 
 Place Caddy or Nginx in front. Route your domain to:
 
-- PWA: `pwa:3003`
-- API: `api:3001` (proxy `/api/auth` and `/api/*`)
-- WebSocket: `notifications:3002` (for `wss://`)
+- PWA: `pwa:3003` (e.g. app.yourdomain.com)
+- API: `api:3001` (e.g. api.yourdomain.com; serves oRPC at `/rpc` and Better Auth at `/api/auth`)
+- Workers: `workers:3002` (e.g. wrk.yourdomain.com; Socket.IO, needs WebSocket upgrade)
+- Admin: `admin:3004` (e.g. admin.yourdomain.com)
 
 **Option B: Port mapping (local testing)**
 
-Add to `docker-compose.yml` under the `pwa` service:
+In `cloud-docker-compose.yml`, add `ports` to the services you want to reach, for example under `pwa`:
 
 ```yaml
 ports:
@@ -166,11 +175,12 @@ Then open http://localhost:3003
 graph LR
     User[User Browser] --> PWA[PWA:3003]
     PWA --> API[API:3001]
-    PWA --> WS[Notifications:3002]
-    API --> Redis[Redis:6379]
+    PWA --> Workers[Workers:3002]
+    Admin[Admin:3004] --> API
+    API --> Redis[(Redis)]
     API --> DB[(PostgreSQL)]
-    WS --> Redis
-    WS --> DB
+    Workers --> Redis
+    Workers --> DB
 ```
 
 ### Production Considerations
@@ -187,19 +197,26 @@ graph LR
 Monorepo (Turborepo):
 
 - `apps/pwa` - Main expense app (Vite + React), port 3003
-- `apps/api` - Hono REST API, port 3001
-- `apps/notifications` - WebSocket server, port 3002
-- `apps/web` - Landing page (hosted separately)
+- `apps/api` - Hono + oRPC API, port 3001
+- `apps/workers` - Socket.IO realtime, notification queue, web push, and cron jobs (recurring expenses, FX rates), port 3002
+- `apps/admin` - Admin console (Vite + React), port 3004
+- `apps/web` - Landing page (Next.js, hosted separately)
 - `packages/services` - Business logic
 - `packages/data` - Data access layer
 - `packages/db` - Drizzle schema and migrations
-
-See [ai/SOUL.md](ai/SOUL.md) for detailed architecture and conventions.
+- `packages/rpc` - oRPC router and procedures
+- `packages/auth` - Better Auth setup
+- `packages/models` - Shared types and Zod schemas
+- `packages/queue` - BullMQ queues
+- `packages/otel` - OpenTelemetry logging and tracing
+- `packages/shared` - Shared utilities
 
 ### Commands
 
 ```bash
-pnpm dev              # Start all services
+pnpm dev              # Start api, workers, and pwa
+pnpm dev:admin        # Start the admin console
+pnpm dev:web          # Start the landing page
 pnpm test             # Run all tests
 pnpm check            # TypeScript check
 pnpm lint             # ESLint
@@ -218,12 +235,13 @@ pnpm generate-https-certs   # Requires mkcert
 graph TB
     subgraph client [Client Layer]
         PWA[PWA - Vite + React]
+        Admin[Admin - Vite + React]
         Web[Landing - Next.js]
     end
 
     subgraph backend [Backend Services]
-        API[API - Hono]
-        Notifications[Notifications - WebSocket]
+        API[API - Hono + oRPC]
+        Workers[Workers - Socket.IO, queue, cron]
     end
 
     subgraph data [Data Layer]
@@ -237,9 +255,11 @@ graph TB
     end
 
     PWA --> API
-    PWA --> Notifications
+    PWA --> Workers
+    Admin --> API
     API --> Services
-    Notifications --> Redis
+    Workers --> Services
+    Workers --> Redis
     API --> Redis
     Services --> Data
     Data --> DB
@@ -247,30 +267,30 @@ graph TB
 
 - Service layer for business logic (validation, authorization, notifications)
 - Data layer for database queries
-- Real-time via Redis pub/sub
+- Notifications go through a BullMQ queue to the workers, which deliver them over Socket.IO and web push
 - PWA with offline-first IndexedDB cache
 
 ## Tech Stack
 
 **Frontend**
 
-- React 18 + Vite
-- TanStack Query + IndexedDB persistence
+- React 19 + Vite
+- TanStack Router + TanStack Query (IndexedDB persistence)
 - Zustand for UI state
-- React Router v7
 - PWA with service workers
 
 **Backend**
 
-- Hono (fast, edge-ready)
+- Hono + oRPC
 - Better Auth (magic links only)
 - Drizzle ORM + PostgreSQL
-- Redis for caching and pub/sub
-- Web Push notifications
+- Redis + BullMQ for queues and caching
+- Socket.IO for realtime, Web Push for notifications
 
 **Infrastructure**
 
-- Docker + Docker Compose
+- Docker + Docker Compose (Dokploy)
+- Doppler for secrets
 - Turborepo monorepo
 - Vitest for testing
 - OpenTelemetry (optional)
