@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { McpSourceBadge } from "@/components/mcp-source-badge";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import type { ActivityItem } from "@/lib/domain-types";
 import { authClient } from "@/lib/auth-client";
@@ -203,8 +204,9 @@ export function ActivityPage() {
                             ) : null}
                           </div>
                           <div className="flex items-end justify-between gap-3 pt-0.5">
-                            <p className="text-xs text-muted-foreground min-w-0">
+                            <p className="text-xs text-muted-foreground min-w-0 flex items-center gap-1.5">
                               {formatAppDate(item.createdAt)}
+                              <McpSourceBadge client={item.viaMcpClient} />
                             </p>
                             <ExpenseYourBalance
                               expenseAmount={item.amount}
@@ -357,8 +359,9 @@ export function ActivityPage() {
                             </span>
                           ) : null}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           {formatAppDate(item.createdAt)}
+                          <McpSourceBadge client={item.viaMcpClient} />
                         </p>
                       </AnimatedCard>
                     </Link>

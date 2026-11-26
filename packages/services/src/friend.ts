@@ -4,6 +4,56 @@ import { tab, friend as friendData, user as userData } from "data";
 import { log } from "otel";
 import { ok, err, type Result } from "./types.js";
 import { notificationService } from "./notification.js";
+import { consumeCooldown, consumeRateLimit, peekCooldown, peekRateLimit } from "queue";
+
+/** Pokes and payment reminders push-notify someone else, so they are throttled. */
+export const NUDGE_LIMITS = {
+  pokeCooldownSec: 10 * 60,
+  reminderCooldownSec: 24 * 60 * 60,
+  perSenderDaily: 30,
+} as const;
+
+function formatWait(sec: number): string {
+  if (sec < 90) return `${sec} seconds`;
+  if (sec < 90 * 60) return `${Math.ceil(sec / 60)} minutes`;
+  return `${Math.ceil(sec / 3600)} hours`;
+}
+
+const DAY_SEC = 24 * 60 * 60;
+
+/**
+ * Checks (without consuming) the daily cap, then the per-friend cooldown.
+ * Nothing is counted until the nudge is actually sent (`recordNudge`), so a
+ * rejected or failed nudge never burns a cooldown.
+ */
+async function checkNudgeLimits(
+  kind: "poke" | "reminder",
+  userId: string,
+  friendTabId: string,
+): Promise<string | null> {
+  const daily = await peekRateLimit(`nudge:${userId}`, NUDGE_LIMITS.perSenderDaily);
+  if (!daily.allowed) {
+    return `You've sent too many pokes and reminders today. Try again in ${formatWait(daily.retryAfterSec)}.`;
+  }
+  const cooldown = await peekCooldown(`${kind}:${userId}:${friendTabId}`);
+  if (!cooldown.allowed) {
+    return kind === "poke"
+      ? `You already poked this friend recently. Try again in ${formatWait(cooldown.retryAfterSec)}.`
+      : `You already sent this friend a reminder recently. Try again in ${formatWait(cooldown.retryAfterSec)}.`;
+  }
+  return null;
+}
+
+/** Counts a nudge that was sent: starts the per-friend cooldown and the daily tally. */
+async function recordNudge(kind: "poke" | "reminder", userId: string, friendTabId: string): Promise<void> {
+  await Promise.all([
+    consumeCooldown(
+      `${kind}:${userId}:${friendTabId}`,
+      kind === "poke" ? NUDGE_LIMITS.pokeCooldownSec : NUDGE_LIMITS.reminderCooldownSec,
+    ),
+    consumeRateLimit(`nudge:${userId}`, NUDGE_LIMITS.perSenderDaily, DAY_SEC),
+  ]);
+}
 
 function secureToken(): string {
   return createShortId();
@@ -261,6 +311,9 @@ export const friendService = {
       return err("Friend not found", 404);
     }
 
+    const limited = await checkNudgeLimits("poke", userId, trimmed);
+    if (limited) return err(limited, 429);
+
     const sender = await userData.getById(userId);
     await notificationService.publishPoke({
       userId: friendUserId,
@@ -270,6 +323,7 @@ export const friendService = {
       fromUserUsername: sender?.username ?? null,
       createdAt: new Date(),
     });
+    await recordNudge("poke", userId, trimmed);
 
     log("info", `Poke sent ${trimmed}`, {
       event: "friend.poke.sent",
@@ -321,6 +375,9 @@ export const friendService = {
       return err("You are not owed on this tab", 400);
     }
 
+    const limited = await checkNudgeLimits("reminder", userId, trimmed);
+    if (limited) return err(limited, 429);
+
     const sender = await userData.getById(userId);
     const amountDisplay = formatAmount(myNet, tabData.currency ?? "USD");
 
@@ -334,6 +391,7 @@ export const friendService = {
       amountDisplay,
       createdAt: new Date(),
     });
+    await recordNudge("reminder", userId, trimmed);
 
     log("info", `Payment reminder sent ${trimmed}`, {
       event: "friend.payment_reminder.sent",

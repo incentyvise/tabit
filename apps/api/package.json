@@ -12,11 +12,16 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/mcp": "1.7.28",
     "@hono/node-server": "^1.13.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@orpc/server": "^1.10.0",
     "auth": "workspace:*",
+    "data": "workspace:*",
     "hono": "^4.6.0",
+    "mcp": "workspace:*",
     "otel": "workspace:*",
+    "queue": "workspace:*",
     "rpc": "workspace:*",
     "shared": "workspace:*"
   },

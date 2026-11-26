@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { Result } from "services";
 
-function statusToCode(status: number): "BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_SERVER_ERROR" {
+function statusToCode(status: number): "BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "TOO_MANY_REQUESTS" | "INTERNAL_SERVER_ERROR" {
   switch (status) {
     case 401:
       return "UNAUTHORIZED";
@@ -11,6 +11,8 @@ function statusToCode(status: number): "BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDD
       return "NOT_FOUND";
     case 409:
       return "CONFLICT";
+    case 429:
+      return "TOO_MANY_REQUESTS";
     case 500:
       return "INTERNAL_SERVER_ERROR";
     default:

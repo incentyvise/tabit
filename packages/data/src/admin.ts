@@ -1,4 +1,5 @@
-import { db, aiUsageEvent, apiKey } from "db";
+import { db, aiUsageEvent } from "db";
+import { oauthApp } from "./oauth-app.js";
 import { eq, sql, type SQL } from "drizzle-orm";
 
 /** Read-only queries backing the admin console. Raw SQL for aggregates; identifiers are camelCase so quoted. */
@@ -246,7 +247,7 @@ export const admin = {
     `);
     if (!user) return null;
 
-    const [stats, tabs, sessions, apiKeys, pushSubscriptions, preferences, activity, ai] =
+    const [stats, tabs, sessions, connectedApps, pushSubscriptions, preferences, activity, ai] =
       await Promise.all([
         one<Record<string, number>>(sql`
           SELECT
@@ -289,17 +290,7 @@ export const admin = {
           SELECT "id", "token", "ipAddress", "userAgent", "createdAt", "updatedAt", "expiresAt", "impersonatedBy"
             FROM "session" WHERE "userId" = ${userId} ORDER BY "updatedAt" DESC
         `),
-        db
-          .select({
-            id: apiKey.id,
-            name: apiKey.name,
-            keyPrefix: apiKey.keyPrefix,
-            scopes: apiKey.scopes,
-            createdAt: apiKey.createdAt,
-            expiresAt: apiKey.expiresAt,
-          })
-          .from(apiKey)
-          .where(eq(apiKey.userId, userId)),
+        oauthApp.listForUser(userId),
         rows<{ id: string; endpoint: string; userAgent: string | null; createdAt: Date }>(sql`
           SELECT "id", "endpoint", "userAgent", "createdAt" FROM "push_subscription"
            WHERE "userId" = ${userId} ORDER BY "createdAt" DESC
@@ -328,7 +319,7 @@ export const admin = {
       tabs,
       // Tokens identify sessions for revoke; never send the full value to the client.
       sessions: sessions.map(({ token, ...s }) => ({ ...s, tokenPreview: token.slice(0, 6) })),
-      apiKeys,
+      connectedApps,
       pushSubscriptions: pushSubscriptions.map((p) => ({
         ...p,
         endpointHost: safeHost(p.endpoint),
@@ -350,11 +341,6 @@ export const admin = {
 
   setRole: async (userId: string, role: "admin" | "user"): Promise<void> => {
     await db.execute(sql`UPDATE "user" SET "role" = ${role}, "updatedAt" = now() WHERE "id" = ${userId}`);
-  },
-
-  deleteApiKey: async (id: string): Promise<boolean> => {
-    const deleted = await db.delete(apiKey).where(eq(apiKey.id, id)).returning({ id: apiKey.id });
-    return deleted.length > 0;
   },
 
   listTabs: async (opts: {

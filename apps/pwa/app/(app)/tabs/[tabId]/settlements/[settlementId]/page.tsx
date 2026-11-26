@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from "@/lib/navigation";
+import { McpSourceBadge } from "@/components/mcp-source-badge";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { useNavTitle } from "../../../../context/nav-title-context";
@@ -254,6 +255,7 @@ export function SettlementPage() {
                         {formatAppDateTime(entry.performedAt)}
                       </>
                     )}
+                    <McpSourceBadge client={entry.viaMcpClient} className="mt-1 flex w-fit" />
                   </span>
                 </li>
               ))}

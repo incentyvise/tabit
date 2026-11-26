@@ -209,7 +209,16 @@ export function getPushTitle(payload: {
   return "New notification";
 }
 
-export function getPushBody(payload: {
+/** Push body, suffixed with "· via <client>" when an MCP client made the change. */
+export function getPushBody(
+  payload: Parameters<typeof getBasePushBody>[0] & { viaMcpClient?: string | null },
+): string {
+  const base = getBasePushBody(payload);
+  if (payload.forcePush || !payload.viaMcpClient) return base;
+  return `${base} · via ${payload.viaMcpClient}`;
+}
+
+function getBasePushBody(payload: {
   type: string;
   description?: string;
   amount?: string;

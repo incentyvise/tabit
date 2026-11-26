@@ -8,6 +8,7 @@ import {
   safeInternalPath,
 } from "@/lib/navigation";
 import { authClient } from "@/lib/auth-client";
+import { followOAuthRedirect, getSignedOAuthQuery } from "@/lib/oauth-flow";
 import { zodFieldErrors } from "@/lib/form-zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,9 @@ const COPY: Record<
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [searchParams] = useSearchParams();
   const callbackURL = safeInternalPath(searchParams.get("callbackURL"), "/tabs");
+  // Signing in to connect an MCP client (Claude, ChatGPT…): the server resumes
+  // the OAuth flow after sign-in and tells us where to go next.
+  const oauthFlow = getSignedOAuthQuery() !== undefined;
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -88,10 +92,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       onSubmit: ({ value }) => zodFieldErrors(otpSchema, value),
     },
     onSubmit: async ({ value }) => {
-      const { error: err } = await authClient.signIn.emailOtp({
+      const { data, error: err } = await authClient.signIn.emailOtp({
         email: verifiedEmail,
         otp: value.otp,
-        callbackURL,
+        ...(oauthFlow ? {} : { callbackURL }),
       });
 
       if (err) {
@@ -104,6 +108,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         return;
       }
 
+      if (oauthFlow) {
+        if (!followOAuthRedirect(data)) {
+          otpForm.setErrorMap({
+            onSubmit: {
+              form: "Signed in, but the app connection expired. Go back to the app and try again.",
+              fields: {},
+            },
+          });
+        }
+        return;
+      }
       navigate(callbackURL);
     },
   });
@@ -133,22 +148,24 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   });
 
   useEffect(() => {
+    if (oauthFlow) return;
     if (!isPending && session?.user) {
       navigate(callbackURL, { replace: true });
     }
-  }, [session, isPending, navigate, callbackURL]);
+  }, [session, isPending, navigate, callbackURL, oauthFlow]);
 
   function handleBackToEmail() {
     setStep("email");
     otpForm.reset();
   }
 
-  const switchHrefWithCallback =
-    searchParams.get("callbackURL") != null
+  const switchHrefWithCallback = oauthFlow
+    ? `${copy.switchHref}${window.location.search}`
+    : searchParams.get("callbackURL") != null
       ? `${copy.switchHref}?callbackURL=${encodeURIComponent(callbackURL)}`
       : copy.switchHref;
 
-  if (isPending || session?.user) {
+  if (isPending || (session?.user && !oauthFlow)) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-primary/5 via-background to-background p-8 top-nav-safe">
         <Spinner />
@@ -165,7 +182,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           className="h-14 w-14 rounded-2xl shadow-md"
         />
         <p className="text-center text-sm text-muted-foreground">
-          Split expenses with friends
+          {oauthFlow
+            ? "Sign in to connect an app to your Tab account"
+            : "Split expenses with friends"}
         </p>
       </div>
 

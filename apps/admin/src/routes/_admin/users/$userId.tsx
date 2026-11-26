@@ -61,7 +61,7 @@ function UserDetailPage() {
   if (query.isError) return <ErrorState error={query.error} />;
   if (!query.data) return <LoadingBlock rows={4} />;
 
-  const { user, isAdmin, stats, tabs, sessions, apiKeys, pushSubscriptions, preferences, activity, ai } =
+  const { user, isAdmin, stats, tabs, sessions, connectedApps, pushSubscriptions, preferences, activity, ai } =
     query.data;
 
   return (
@@ -262,44 +262,44 @@ function UserDetailPage() {
         </Section>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Section title={`API keys (${apiKeys.length})`} bodyClassName="p-0">
+          <Section title={`Connected apps (${connectedApps.length})`} bodyClassName="p-0">
             <DataTable
-              rows={apiKeys}
-              rowKey={(k) => k.id}
-              empty="No API keys."
+              rows={connectedApps}
+              rowKey={(a) => a.consentId}
+              empty="No MCP apps connected."
               columns={[
                 {
                   key: "name",
-                  header: "Key",
-                  cell: (k) => (
+                  header: "App",
+                  cell: (a) => (
                     <div className="flex items-center gap-2">
                       <KeyRound className="size-3.5 text-muted-foreground" />
-                      <span className="font-medium">{k.name}</span>
-                      <Mono>{k.keyPrefix}…</Mono>
+                      <span className="font-medium">{a.name}</span>
+                      {a.host && <Mono>{a.host}</Mono>}
                     </div>
                   ),
                 },
-                { key: "scopes", header: "Scopes", cell: (k) => k.scopes ?? "—" },
-                { key: "created", header: "Created", cell: (k) => fmtDate(k.createdAt) },
+                { key: "scopes", header: "Scopes", cell: (a) => a.scopes.join(" ") || "—" },
+                { key: "created", header: "Connected", cell: (a) => fmtDate(a.connectedAt) },
                 {
                   key: "revoke",
                   header: "",
                   className: "text-right",
-                  cell: (k) => (
+                  cell: (a) => (
                     <ConfirmButton
                       variant="ghost"
                       size="sm"
-                      title="Revoke API key?"
-                      description={`"${k.name}" (${k.keyPrefix}…) will stop working immediately. This deletes the key.`}
-                      confirmLabel="Revoke"
+                      title="Disconnect app?"
+                      description={`${a.label} will lose access to this user's Tab account immediately.`}
+                      confirmLabel="Disconnect"
                       destructive
                       onConfirm={async () => {
-                        await adminRpc.users.revokeApiKey({ apiKeyId: k.id });
-                        toast.success("API key revoked");
+                        await adminRpc.users.revokeConnectedApp({ userId: user.id, clientId: a.clientId });
+                        toast.success("App disconnected");
                         await refresh();
                       }}
                     >
-                      Revoke
+                      Disconnect
                     </ConfirmButton>
                   ),
                 },

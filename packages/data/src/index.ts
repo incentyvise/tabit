@@ -59,8 +59,6 @@ export type { FriendRequest, PendingFriend } from "./friend.js";
 
 export { preference } from "./preference.js";
 
-export { apiKeyData } from "./api-key.js";
-export type { ApiKeySummary, ApiKeyCreated } from "./api-key.js";
 
 export { push } from "./push.js";
 export { tabInvite } from "./tab-invite.js";
@@ -98,3 +96,8 @@ export type {
   AdminTabListItem,
   AdminExpenseListItem,
 } from "./admin.js";
+
+export { oauthApp } from "./oauth-app.js";
+export type { ConnectedApp, OAuthClientInfo } from "./oauth-app.js";
+export { runWithWriteSource, currentWriteSource, writeSourceColumns } from "./write-source.js";
+export type { WriteSource } from "./write-source.js";

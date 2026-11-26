@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "db": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.4",
     "shared": "workspace:*"
   },
   "devDependencies": {
