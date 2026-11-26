@@ -1,6 +1,7 @@
 import { enqueueNotification } from "queue";
 import type { NotificationPayload, PaymentReminderTone } from "models";
 import { spanEvent } from "otel";
+import { currentWriteSource } from "data";
 import {
   createExpenseAddedNotificationPayload,
   createExpenseUpdatedNotificationPayload,
@@ -25,7 +26,13 @@ async function publish(
   options?: { forcePush?: boolean; skipPush?: boolean },
 ): Promise<void> {
   spanEvent("notification.enqueued", { userId, type: payload.type });
-  await enqueueNotification(userId, payload, options);
+  // When an MCP client (e.g. Claude) acted for the user, say so in the
+  // realtime payload and push copy: "… · via Claude".
+  const via = currentWriteSource();
+  const withSource: NotificationPayload = via
+    ? Object.assign({}, payload, { viaMcpClient: via.clientName })
+    : payload;
+  await enqueueNotification(userId, withSource, options);
 }
 
 export const notificationService = {

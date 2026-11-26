@@ -8,3 +8,10 @@ export {
 } from "./notifications.js";
 export type { Job } from "bullmq";
 export { getRedisConnection } from "./connection.js";
+export {
+  consumeRateLimit,
+  consumeCooldown,
+  peekRateLimit,
+  peekCooldown,
+  type RateLimitResult,
+} from "./rate-limit.js";

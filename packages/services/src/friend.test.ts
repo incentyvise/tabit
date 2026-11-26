@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach } from "vitest";
 import { friendService } from "./friend.js";
 import { friend as friendData, user as userData, tab } from "data";
 import { notificationService } from "./notification.js";
+import { consumeCooldown, peekCooldown, peekRateLimit } from "queue";
 
 describe("friendService", () => {
   beforeEach(() => {
@@ -255,6 +256,57 @@ describe("friendService", () => {
       if (!result.success) {
         expect(result.error).toBe("Tab not found or you are not a member");
       }
+    });
+
+    test("sends a poke when not rate limited", async () => {
+      vi.mocked(friendData.isUserInDirectTab).mockResolvedValue(true);
+      vi.mocked(friendData.getOtherMemberOfDirectTab).mockResolvedValue("user2");
+      vi.mocked(userData.getById).mockResolvedValue(null);
+
+      const result = await friendService.poke("user1", "tab1");
+
+      expect(result.success).toBe(true);
+      expect(notificationService.publishPoke).toHaveBeenCalled();
+      expect(consumeCooldown).toHaveBeenCalledWith("poke:user1:tab1", 600);
+    });
+
+    test("returns 429 and skips the push during the cooldown", async () => {
+      vi.mocked(friendData.isUserInDirectTab).mockResolvedValue(true);
+      vi.mocked(friendData.getOtherMemberOfDirectTab).mockResolvedValue("user2");
+      vi.mocked(peekCooldown).mockResolvedValueOnce({ allowed: false, retryAfterSec: 300 });
+
+      const result = await friendService.poke("user1", "tab1");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(429);
+        expect(result.error).toContain("5 minutes");
+      }
+      expect(notificationService.publishPoke).not.toHaveBeenCalled();
+      expect(consumeCooldown).not.toHaveBeenCalled();
+    });
+
+    test("does not start a cooldown when sending fails", async () => {
+      vi.mocked(friendData.isUserInDirectTab).mockResolvedValue(true);
+      vi.mocked(friendData.getOtherMemberOfDirectTab).mockResolvedValue("user2");
+      vi.mocked(notificationService.publishPoke).mockRejectedValueOnce(new Error("queue down"));
+
+      await expect(friendService.poke("user1", "tab1")).rejects.toThrow("queue down");
+      expect(consumeCooldown).not.toHaveBeenCalled();
+    });
+
+    test("returns 429 when the daily nudge cap is reached", async () => {
+      vi.mocked(friendData.isUserInDirectTab).mockResolvedValue(true);
+      vi.mocked(friendData.getOtherMemberOfDirectTab).mockResolvedValue("user2");
+      vi.mocked(peekRateLimit).mockResolvedValueOnce({ allowed: false, retryAfterSec: 7200 });
+
+      const result = await friendService.poke("user1", "tab1");
+
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.status).toBe(429);
+      expect(notificationService.publishPoke).not.toHaveBeenCalled();
+      // A rejected nudge must not start the per-friend cooldown.
+      expect(consumeCooldown).not.toHaveBeenCalled();
     });
   });
 

@@ -12,6 +12,18 @@ export type User = {
 };
 
 export const user = {
+  /** Account status for token-authenticated access (MCP): missing, banned, or ok. */
+  getAccessStatus: async (userId: string): Promise<"ok" | "missing" | "banned"> => {
+    const [row] = await db
+      .select({ banned: userTable.banned, banExpires: userTable.banExpires })
+      .from(userTable)
+      .where(eq(userTable.id, userId))
+      .limit(1);
+    if (!row) return "missing";
+    if (row.banned && (!row.banExpires || row.banExpires > new Date())) return "banned";
+    return "ok";
+  },
+
   getById: async (userId: string): Promise<User | null> => {
     const [row] = await db
       .select({

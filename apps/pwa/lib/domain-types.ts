@@ -112,6 +112,8 @@ export type ActivityItem =
       expenseDate: Date | string;
       createdAt: Date | string;
       deletedAt: Date | string | null;
+      /** Set when an MCP client (e.g. Claude) added it for the payer. */
+      viaMcpClient?: string | null;
     }
   | {
       type: "settlement";
@@ -134,6 +136,7 @@ export type ActivityItem =
       originalAmount: number | null;
       settlementDate: Date | string;
       createdAt: Date | string;
+      viaMcpClient?: string | null;
     }
   | {
       type: "placeholder_merge";

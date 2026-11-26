@@ -1,10 +1,37 @@
 import { betterAuth } from "better-auth";
 import { createFullId, parseCorsOrigins } from "shared";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP, admin } from "better-auth/plugins";
+import { emailOTP, admin, jwt } from "better-auth/plugins";
+import { mcp } from "@better-auth/mcp";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { SequenzyClient } from "sequenzy";
-import { db, user, session, account, verification } from "db";
+import {
+  db,
+  user,
+  session,
+  account,
+  verification,
+  jwks,
+  oauthClient,
+  oauthAccessToken,
+  oauthRefreshToken,
+  oauthConsent,
+  oauthClientAssertion,
+  oauthResource,
+  oauthClientResource,
+} from "db";
+import {
+  getApiBaseUrl,
+  getMcpResource,
+  getPwaUrl,
+  MCP_READ_SCOPE,
+  MCP_WRITE_SCOPE,
+} from "./mcp-config.js";
+
+export * from "./mcp-config.js";
+export { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import { debug, log } from "otel";
 import { sendDiscordWebhook } from "shared";
 
@@ -54,8 +81,13 @@ export function isAllowlistedAdmin(email: string | null | undefined): boolean {
   return !!email && getAdminEmails().has(email.toLowerCase());
 }
 
+const MCP_SCOPES = ["openid", "profile", "offline_access", MCP_READ_SCOPE, MCP_WRITE_SCOPE];
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
+  // The JWT plugin's session-token endpoint shares the access-token signing key;
+  // disable it so a session JWT can never be replayed as an MCP access token.
+  disabledPaths: ["/token"],
   session: {
     expiresIn: 60 * 60 * 24 * 365,
   },
@@ -82,6 +114,14 @@ export const auth = betterAuth({
       session,
       account,
       verification,
+      jwks,
+      oauthClient,
+      oauthAccessToken,
+      oauthRefreshToken,
+      oauthConsent,
+      oauthClientAssertion,
+      oauthResource,
+      oauthClientResource,
     },
   }),
   databaseHooks: {
@@ -182,11 +222,28 @@ export const auth = betterAuth({
       },
       expiresIn: 60 * 5,
     }),
+    // OAuth 2.1 authorization server for MCP clients (Claude, ChatGPT, Cursor…).
+    // Login and consent screens live in the PWA; the session cookie is shared
+    // via crossSubDomainCookies so /oauth2/authorize sees the PWA session.
+    jwt({ disableSettingJwtHeader: true }),
+    mcp({
+      resource: getMcpResource(),
+      loginPage: `${getPwaUrl()}/login`,
+      consentPage: `${getPwaUrl()}/oauth/consent`,
+      scopes: MCP_SCOPES,
+      // Clients that predate CIMD (most MCP clients today) register via DCR.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationDefaultApplicationType: "infer",
+      clientRegistrationDefaultScopes: MCP_SCOPES,
+      allowPublicClientPrelogin: true,
+      // Public clients have no secret; don't let a stolen refresh token be
+      // replayed inside a grace window.
+      refreshTokenReuseInterval: 0,
+    }),
+    cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
   ],
-  baseURL:
-    process.env.VITE_API_URL ??
-    process.env.VITE_BACKEND_URL ??
-    "http://localhost:3001",
+  baseURL: getApiBaseUrl(),
   trustedOrigins: parseCorsOrigins(
     process.env.NEXT_PUBLIC_PWA_URL,
     process.env.BETTER_AUTH_TRUSTED_ORIGINS,

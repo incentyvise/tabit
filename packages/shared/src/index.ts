@@ -17,3 +17,4 @@ export {
   type SimplifyDebtsResult,
   type SimplifyDebtsOptions,
 } from "./simplify-debts.js";
+export * from "./mcp-clients.js";

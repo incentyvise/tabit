@@ -15,6 +15,7 @@ import { Route as InviteRouteImport } from './routes/invite'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as OauthConsentRouteImport } from './routes/oauth/consent'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
@@ -59,6 +60,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AuthenticatedActivityRoute
   '/me': typeof AuthenticatedMeRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/expense/new': typeof AuthenticatedExpenseNewRoute
   '/friends/add-by-qr': typeof AuthenticatedFriendsAddByQrRoute
   '/friends/addFriend': typeof AuthenticatedFriendsAddFriendRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AuthenticatedActivityRoute
   '/me': typeof AuthenticatedMeRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/': typeof AuthenticatedIndexRoute
   '/expense/new': typeof AuthenticatedExpenseNewRoute
   '/friends/add-by-qr': typeof AuthenticatedFriendsAddByQrRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/expense/new': typeof AuthenticatedExpenseNewRoute
   '/_authenticated/friends/add-by-qr': typeof AuthenticatedFriendsAddByQrRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/me'
     | '/onboarding'
+    | '/oauth/consent'
     | '/expense/new'
     | '/friends/add-by-qr'
     | '/friends/addFriend'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/me'
     | '/onboarding'
+    | '/oauth/consent'
     | '/'
     | '/expense/new'
     | '/friends/add-by-qr'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/_authenticated/activity'
     | '/_authenticated/me'
     | '/_authenticated/onboarding'
+    | '/oauth/consent'
     | '/_authenticated/'
     | '/_authenticated/expense/new'
     | '/_authenticated/friends/add-by-qr'
@@ -289,6 +301,7 @@ export interface RootRouteChildren {
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  OauthConsentRoute: typeof OauthConsentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
@@ -494,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  OauthConsentRoute: OauthConsentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

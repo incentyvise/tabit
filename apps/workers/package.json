@@ -16,7 +16,7 @@
   "dependencies": {
     "auth": "workspace:*",
     "db": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.4",
     "models": "workspace:*",
     "node-cron": "^4.2.1",
     "otel": "workspace:*",

@@ -126,6 +126,15 @@ vi.mock("data", () => ({
   },
 }));
 
+// Rate limits always allow unless a test overrides them
+vi.mock("queue", () => ({
+  consumeCooldown: vi.fn().mockResolvedValue({ allowed: true, retryAfterSec: 0 }),
+  consumeRateLimit: vi.fn().mockResolvedValue({ allowed: true, retryAfterSec: 0 }),
+  peekCooldown: vi.fn().mockResolvedValue({ allowed: true, retryAfterSec: 0 }),
+  peekRateLimit: vi.fn().mockResolvedValue({ allowed: true, retryAfterSec: 0 }),
+  enqueueNotification: vi.fn(),
+}));
+
 // Mock notificationService
 vi.mock("../notification.js", () => ({
   notificationService: {

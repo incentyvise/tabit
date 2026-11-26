@@ -6,6 +6,7 @@ import {
 import { eq, and, lte, sql } from "drizzle-orm";
 import { createId } from "shared";
 import { expense, type CreateExpenseInput } from "./expense.js";
+import { writeSourceColumns } from "./write-source.js";
 
 export type RecurringRuleRow = {
   id: string;
@@ -33,6 +34,7 @@ export const recurringExpense = {
   insertRule: async (input: InsertRecurringRuleInput): Promise<string> => {
     const id = input.id ?? createId();
     await db.insert(ruleTable).values({
+      ...writeSourceColumns(),
       id,
       tabId: input.tabId,
       ownerUserId: input.ownerUserId,
@@ -139,6 +141,7 @@ export const recurringExpense = {
     return db.transaction(async (tx) => {
       const ruleId = ruleInput.id ?? createId();
       await tx.insert(ruleTable).values({
+        ...writeSourceColumns(),
         id: ruleId,
         tabId: ruleInput.tabId,
         ownerUserId: ruleInput.ownerUserId,

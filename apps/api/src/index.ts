@@ -9,27 +9,44 @@ import { appRouter, type RpcContext } from "rpc";
 import { resolveCorsOrigins } from "shared";
 import { SLOW_RPC_MS } from "otel";
 import { log } from "./lib/logger.js";
+import { mountMcp } from "./mcp.js";
 
 const app = new Hono();
 
 const origins = resolveCorsOrigins();
 
-app.use(
-  "*",
-  cors({
-    origin: origins,
-    credentials: true,
-    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cookie",
-      "Accept",
-      "Origin",
-      "X-Requested-With",
-    ],
-  }),
-);
+/**
+ * Endpoints MCP clients call directly (often from another origin, never with
+ * cookies) get an open, credential-less CORS policy instead of the app's
+ * allowlist: discovery, the MCP endpoint, and the OAuth token-side endpoints.
+ * Consent/continue stay on the app policy because the PWA calls them with cookies.
+ */
+const OAUTH_PUBLIC_PATHS = new Set([
+  "/api/auth/oauth2/token",
+  "/api/auth/oauth2/register",
+  "/api/auth/oauth2/revoke",
+  "/api/auth/oauth2/introspect",
+  "/api/auth/oauth2/userinfo",
+  "/api/auth/jwks",
+]);
+const isMcpPublicPath = (path: string) =>
+  path === "/mcp" || path.startsWith("/.well-known/") || OAUTH_PUBLIC_PATHS.has(path);
+
+const appCors = cors({
+  origin: origins,
+  credentials: true,
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Cookie",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+  ],
+});
+
+app.use("*", (c, next) => (isMcpPublicPath(c.req.path) ? next() : appCors(c, next)));
 
 app.use("*", async (c, next) => {
   const start = Date.now();
@@ -64,6 +81,8 @@ app.use("*", async (c, next) => {
 });
 
 app.get("/health", (c) => c.json({ status: "ok" }));
+
+mountMcp(app);
 
 app.on(["GET", "POST"], "/api/auth/*", async (c) => auth.handler(c.req.raw));
 

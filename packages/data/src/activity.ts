@@ -48,6 +48,8 @@ export type ActivityItem =
       expenseDate: Date;
       createdAt: Date;
       deletedAt: Date | null;
+      /** MCP client name when added via an MCP client (e.g. "Claude"). */
+      viaMcpClient: string | null;
     }
   | {
       type: "settlement";
@@ -70,6 +72,7 @@ export type ActivityItem =
       originalAmount: number | null;
       settlementDate: Date;
       createdAt: Date;
+      viaMcpClient: string | null;
     }
   | {
       type: "placeholder_merge";
@@ -265,6 +268,8 @@ export const activity = {
                 "paidByName",
               ),
               paidByUsername: user.username,
+              source: expense.source,
+              sourceClientName: expense.sourceClientName,
             })
             .from(expense)
             .leftJoin(user, eq(expense.paidById, user.id))
@@ -400,6 +405,7 @@ export const activity = {
           expenseDate: e.expenseDate,
           createdAt: e.createdAt,
           deletedAt: e.deletedAt ?? null,
+          viaMcpClient: e.source === "mcp" ? (e.sourceClientName ?? "MCP client") : null,
         });
       } else if (row.kind === "settlement") {
         const s = settlementById.get(row.id);
@@ -436,6 +442,7 @@ export const activity = {
             s.originalAmount != null ? Number(s.originalAmount) : null,
           settlementDate: s.settlementDate,
           createdAt: s.createdAt,
+          viaMcpClient: s.source === "mcp" ? (s.sourceClientName ?? "MCP client") : null,
         });
       } else if (row.kind === "placeholder_merge") {
         const m = mergeById.get(row.id);

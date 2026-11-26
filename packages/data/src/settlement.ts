@@ -7,6 +7,7 @@ import {
 } from "db";
 import { eq, desc, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { writeSourceColumns } from "./write-source.js";
 
 const settlementFromUser = alias(user, "settlement_from_user");
 const settlementToUser = alias(user, "settlement_to_user");
@@ -78,6 +79,7 @@ export type SettlementAuditLogEntry = {
   performedById: string;
   performedAt: Date;
   changes: Record<string, { from: unknown; to: unknown }> | null;
+  viaMcpClient?: string | null;
   performedBy: {
     id: string;
     email: string;
@@ -246,6 +248,8 @@ export const settlement = {
         performedById: settlementAuditLog.performedById,
         performedAt: settlementAuditLog.performedAt,
         changes: settlementAuditLog.changes,
+        sourceClientName: settlementAuditLog.sourceClientName,
+        source: settlementAuditLog.source,
         performedByEmail: user.email,
         performedByName: user.name,
         performedByUsername: user.username,
@@ -263,6 +267,8 @@ export const settlement = {
       performedById: r.performedById,
       performedAt: r.performedAt,
       changes: r.changes as Record<string, { from: unknown; to: unknown }> | null,
+      /** Set when an MCP client (e.g. Claude) made this change for the user. */
+      viaMcpClient: r.source === "mcp" ? (r.sourceClientName ?? "MCP client") : null,
       performedBy: {
         id: r.performedById,
         email: r.performedByEmail,
@@ -276,6 +282,7 @@ export const settlement = {
     const [inserted] = await db
       .insert(settlementTable)
       .values({
+        ...writeSourceColumns(),
         tabId: input.tabId,
         fromUserId: input.fromUserId,
         toUserId: input.toUserId,
@@ -293,6 +300,7 @@ export const settlement = {
     const settlementId = inserted!.id;
 
     await db.insert(settlementAuditLog).values({
+      ...writeSourceColumns(),
       settlementId,
       tabId: input.tabId,
       action: "create",
@@ -375,6 +383,7 @@ export const settlement = {
       .where(eq(settlementTable.id, settlementId));
 
     await db.insert(settlementAuditLog).values({
+      ...writeSourceColumns(),
       settlementId,
       tabId,
       action: "update",
@@ -392,6 +401,7 @@ export const settlement = {
     performedById: string,
   ): Promise<void> => {
     await db.insert(settlementAuditLog).values({
+      ...writeSourceColumns(),
       settlementId,
       tabId,
       action: "delete",

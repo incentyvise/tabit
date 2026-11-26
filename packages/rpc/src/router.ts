@@ -11,6 +11,7 @@ import { pushProcedures } from "./procedures/push.js";
 import { notificationsProcedures } from "./procedures/notifications.js";
 import { aiProcedures } from "./procedures/ai.js";
 import { adminProcedures } from "./procedures/admin.js";
+import { connectedAppsProcedures } from "./procedures/connected-apps.js";
 
 export const appRouter = {
   friends: friendsProcedures,
@@ -26,6 +27,7 @@ export const appRouter = {
   notifications: notificationsProcedures,
   ai: aiProcedures,
   admin: adminProcedures,
+  connectedApps: connectedAppsProcedures,
 };
 
 export type AppRouter = typeof appRouter;

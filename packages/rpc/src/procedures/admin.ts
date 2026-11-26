@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
 import { auth, isAllowlistedAdmin } from "auth";
-import { admin as adminData } from "data";
+import { admin as adminData, oauthApp } from "data";
 import { getNotificationsQueue } from "queue";
 import { base } from "../auth-middleware.js";
 
@@ -114,11 +114,11 @@ export const adminProcedures = {
         return { ok: true };
       }),
 
-    revokeApiKey: adminProc
-      .input(z.object({ apiKeyId: z.string() }))
+    revokeConnectedApp: adminProc
+      .input(z.object({ userId: z.string(), clientId: z.string() }))
       .handler(async ({ input }) => {
-        const deleted = await adminData.deleteApiKey(input.apiKeyId);
-        if (!deleted) throw new ORPCError("NOT_FOUND", { message: "API key not found" });
+        const revoked = await oauthApp.revokeForUser(input.userId, input.clientId);
+        if (!revoked) throw new ORPCError("NOT_FOUND", { message: "Connected app not found" });
         return { ok: true };
       }),
   },

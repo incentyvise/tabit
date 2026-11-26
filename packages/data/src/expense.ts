@@ -9,6 +9,7 @@ import {
 } from "db";
 import { eq, ne, desc, sql, or, and, inArray, isNull, not, type SQL } from "drizzle-orm";
 import { getParticipantIdForTabUser, ensureMemberParticipantsForTab } from "./tab-participant.js";
+import { writeSourceColumns } from "./write-source.js";
 
 export type ExpenseReaction = {
   emoji: string;
@@ -264,6 +265,7 @@ export type ExpenseAuditLogEntry = {
   performedById: string;
   performedAt: Date;
   changes: Record<string, { from: unknown; to: unknown }> | null;
+  viaMcpClient?: string | null;
   performedBy: {
     id: string;
     email: string;
@@ -279,6 +281,7 @@ async function insertExpenseWithClient(
   const [inserted] = await client
     .insert(expenseTable)
     .values({
+      ...writeSourceColumns(),
       tabId: input.tabId,
       paidById: input.paidById,
       paidByParticipantId: input.paidByParticipantId,
@@ -304,6 +307,7 @@ async function insertExpenseWithClient(
   }
 
   await client.insert(expenseAuditLog).values({
+    ...writeSourceColumns(),
     expenseId,
     tabId: input.tabId,
     action: input.auditAction ?? "create",
@@ -441,6 +445,8 @@ export const expense = {
         performedById: expenseAuditLog.performedById,
         performedAt: expenseAuditLog.performedAt,
         changes: expenseAuditLog.changes,
+        sourceClientName: expenseAuditLog.sourceClientName,
+        source: expenseAuditLog.source,
         performedByEmail: user.email,
         performedByName: user.name,
         performedByUsername: user.username,
@@ -458,6 +464,8 @@ export const expense = {
       performedById: r.performedById,
       performedAt: r.performedAt,
       changes: r.changes as Record<string, { from: unknown; to: unknown }> | null,
+      /** Set when an MCP client (e.g. Claude) made this change for the user. */
+      viaMcpClient: r.source === "mcp" ? (r.sourceClientName ?? "MCP client") : null,
       performedBy: {
         id: r.performedById,
         email: r.performedByEmail,
@@ -702,6 +710,7 @@ export const expense = {
 
     if (Object.keys(changes).length > 0) {
       await db.insert(expenseAuditLog).values({
+        ...writeSourceColumns(),
         expenseId,
         tabId,
         action: "update",
@@ -717,6 +726,7 @@ export const expense = {
     performedById: string,
   ): Promise<void> => {
     await db.insert(expenseAuditLog).values({
+      ...writeSourceColumns(),
       expenseId,
       tabId,
       action: "delete",
@@ -741,6 +751,7 @@ export const expense = {
       .where(eq(expenseTable.id, expenseId));
 
     await db.insert(expenseAuditLog).values({
+      ...writeSourceColumns(),
       expenseId,
       tabId,
       action: "restore",
@@ -882,6 +893,7 @@ export const expense = {
         action: "create" as const,
         performedById,
         changes: null,
+        ...writeSourceColumns(),
       }));
       await tx.insert(expenseAuditLog).values(auditRows);
     });

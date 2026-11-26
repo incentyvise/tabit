@@ -44,6 +44,7 @@ Commercial expense-splitting apps can change the rules overnight. Free tiers get
 - [x] Real-time notifications via Socket.IO and web push
 - [ ] Offline-first with IndexedDB persistence
 - [x] Emoji reactions on expenses
+- [x] **MCP server**: manage tabs, expenses, settlements and friends from Claude, ChatGPT, Cursor and other MCP clients (see [Use Tab from AI apps](#use-tab-from-ai-apps-mcp))
 
 ### Social and Collaboration
 
@@ -58,6 +59,18 @@ Commercial expense-splitting apps can change the rules overnight. Free tiers get
 - [x] Self-hostable
 - [x] Magic link authentication (no passwords to manage)
 - [x] Your data stays on your server
+
+## Use Tab from AI apps (MCP)
+
+Tab ships a remote [Model Context Protocol](https://modelcontextprotocol.io) server at `<API URL>/mcp` (hosted: `https://api.tabit.in/mcp`). Add it as a custom connector and sign in with your Tab account when asked:
+
+- **Claude (claude.ai / Desktop):** Settings → Connectors → Add custom connector → paste the URL.
+- **Claude Code:** `claude mcp add --transport http tab https://api.tabit.in/mcp`, then run `/mcp` to sign in.
+- **ChatGPT, Cursor, VS Code and others:** add a remote MCP server with the same URL.
+
+You approve each app on a consent screen. Read access covers tabs, friends, balances, expenses and settlements; write access adds/edits expenses and settlements, manages tabs and recurring expenses, and can send friend requests, pokes and payment reminders. Anything an app adds shows as **“via MCP · <app>”** in history, the activity feed and notifications. Disconnect apps any time from **Profile → Connected apps**.
+
+Under the hood: Better Auth's `@better-auth/mcp` plugin makes the API an OAuth 2.1 authorization server (PKCE, dynamic client registration and Client ID Metadata Documents, audience-bound JWT access tokens, refresh tokens), and `packages/mcp` defines the tools on top of the existing services layer. Self-hosters get it by default; set `MCP_ENABLED=false` to turn it off. Sign-in happens on the PWA, so the API and PWA must share the session cookie (same host, or `BETTER_AUTH_COOKIE_DOMAIN` set to their parent domain).
 
 ## Quick Start
 
@@ -135,7 +148,7 @@ Edit `.env` with your values. Required variables:
 
 The PWA and admin are static Vite bundles, so their `VITE_*` values are baked in at build time (via Doppler build args `DOPPLER_TOKEN_PWA` / `DOPPLER_TOKEN_ADMIN`, or build args in the compose file). The api and workers read their env at runtime.
 
-Optional: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` for web push; `DISCORD_WEBHOOK_URL` for ops alerts; `GOOGLE_GENERATIVE_AI_API_KEY` for AI expense parsing; `TIMEZONE_IP_LOOKUP=0` on the API to skip optional IP-based timezone suggestion for profile preferences (proxy headers such as `CF-Timezone` are still honored when present).
+Optional: `MCP_ENABLED=false` to disable the MCP server (on by default), `MCP_RATE_LIMIT_PER_MIN` (default 120); `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` for web push; `DISCORD_WEBHOOK_URL` for ops alerts; `GOOGLE_GENERATIVE_AI_API_KEY` for AI expense parsing; `TIMEZONE_IP_LOOKUP=0` on the API to skip optional IP-based timezone suggestion for profile preferences (proxy headers such as `CF-Timezone` are still honored when present).
 
 ### Step 3: Start the Stack
 
@@ -205,6 +218,7 @@ Monorepo (Turborepo):
 - `packages/data` - Data access layer
 - `packages/db` - Drizzle schema and migrations
 - `packages/rpc` - oRPC router and procedures
+- `packages/mcp` - MCP server tools (mounted by the API at `/mcp`)
 - `packages/auth` - Better Auth setup
 - `packages/models` - Shared types and Zod schemas
 - `packages/queue` - BullMQ queues

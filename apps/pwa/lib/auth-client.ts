@@ -1,8 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { emailOTPClient } from "better-auth/client/plugins";
+import { oauthFlowClient } from "./oauth-flow";
 
-function getAuthBaseUrl(): string {
+export function getAuthBaseUrl(): string {
   const apiBase = import.meta.env.VITE_API_URL ?? import.meta.env.VITE_BACKEND_URL;
   if (apiBase) return apiBase.replace(/\/$/, "");
   if (typeof window !== "undefined") return window.location.origin;
@@ -16,6 +17,7 @@ export const authClient = createAuthClient({
   },
   plugins: [
     emailOTPClient(),
+    oauthFlowClient(),
     inferAdditionalFields({
       user: {
         username: { type: "string", required: false },

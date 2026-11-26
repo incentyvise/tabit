@@ -60,6 +60,7 @@ import { CURATED_CURRENCIES, getCurrency } from "shared";
 import { useBustCache } from "@/lib/use-bust-cache";
 import { getSupportedIanaTimeZones } from "@/lib/iana-timezones";
 import { friendTokenQuery, preferencesQuery } from "@/lib/queries";
+import { ConnectedAppsSection } from "./connected-apps-section";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{5,12}$/;
 
@@ -545,6 +546,8 @@ export function MePage() {
         <VoiceInputSection />
 
         <PushNotificationsSection />
+
+        <ConnectedAppsSection />
 
         <SupportSection />
 

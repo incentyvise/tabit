@@ -169,6 +169,20 @@
       "when": 1792845754835,
       "tag": "0023_admin_and_ai_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795697731054,
+      "tag": "0024_write_source_drop_api_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795697732429,
+      "tag": "0025_mcp_oauth_provider",
+      "breakpoints": true
     }
   ]
 }

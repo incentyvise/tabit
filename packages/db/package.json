@@ -16,11 +16,11 @@
     "db:studio": "doppler run -- drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.4",
     "models": "workspace:*",
     "shared": "workspace:*",
     "pg": "^8.13.0",
-    "drizzle-kit": "^0.30.0"
+    "drizzle-kit": "^0.31.11"
   },
   "devDependencies": {
     "dotenv-cli": "^7.4.2",

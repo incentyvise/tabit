@@ -15,6 +15,20 @@ import {
 import { createId } from "shared";
 import { user } from "./auth.js";
 
+/**
+ * Where a write came from. Null = the Tab app itself. `mcp` = an MCP client
+ * (Claude, ChatGPT, …) acting for the user; the client name is snapshotted at
+ * write time so "Added via MCP · Claude" survives the client being removed.
+ */
+const sourceColumns = () => ({
+  /** null (app) | mcp */
+  source: text("source"),
+  /** OAuth client_id of the MCP client, when source = mcp. */
+  sourceClientId: text("sourceClientId"),
+  /** Display name of the MCP client at write time. */
+  sourceClientName: text("sourceClientName"),
+});
+
 export const friendRequest = pgTable("friend_request", {
   id: text("id")
     .primaryKey()
@@ -147,6 +161,7 @@ export const recurringExpenseRule = pgTable(
     /** Next calendar date (YYYY-MM-DD in owner TZ) when a post may run. */
     nextDueKey: text("nextDueKey").notNull(),
     pausedAt: timestamp("pausedAt"),
+    ...sourceColumns(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
@@ -182,6 +197,7 @@ export const expense = pgTable(
     description: text("description").notNull(),
     splitType: text("splitType").notNull().default("equal"),
     expenseDate: timestamp("expenseDate").notNull().defaultNow(),
+    ...sourceColumns(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     deletedAt: timestamp("deletedAt"),
   },
@@ -317,6 +333,7 @@ export const settlement = pgTable("settlement", {
   originalAmount: decimal("originalAmount", { precision: 12, scale: 2 }),
   /** Calendar date of the payment (used for ordering and FX). */
   settlementDate: timestamp("settlementDate").notNull(),
+  ...sourceColumns(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
@@ -332,6 +349,7 @@ export const expenseAuditLog = pgTable("expense_audit_log", {
   performedById: text("performedById")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  ...sourceColumns(),
   performedAt: timestamp("performedAt").notNull().defaultNow(),
   changes: jsonb("changes"), // for updates: { amount: { from, to }, description: { from, to }, ... }
 });
@@ -350,23 +368,9 @@ export const settlementAuditLog = pgTable("settlement_audit_log", {
   performedById: text("performedById")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  ...sourceColumns(),
   performedAt: timestamp("performedAt").notNull().defaultNow(),
   changes: jsonb("changes"),
-});
-
-export const apiKey = pgTable("api_key", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  userId: text("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  keyHash: text("keyHash").notNull(),
-  keyPrefix: text("keyPrefix").notNull(),
-  name: text("name").notNull(),
-  scopes: text("scopes"), // comma-separated, e.g. "read,write"
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  expiresAt: timestamp("expiresAt"),
 });
 
 export const pushSubscription = pgTable("push_subscription", {
