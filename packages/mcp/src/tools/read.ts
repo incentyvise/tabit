@@ -13,13 +13,7 @@ import { ToolError, unwrap } from "../context.js";
 import { defineTool, type ToolContext } from "../tool.js";
 import { describeNet, displayUser, isoDate, money, parseDateArg, roundMoney } from "../format.js";
 import { nameIndex, normalize, participantSummary } from "../resolve.js";
-
-const tabRef = z
-  .string()
-  .min(1)
-  .describe(
-    "Which tab: a tab id, a group tab's name, or a friend's username/name for your 1:1 tab with them.",
-  );
+import { expenseFilterShape, queryOptions, tabRef } from "../expense-query.js";
 
 /** Balances plus suggested settle-up transfers for one tab, named from the user's point of view. */
 async function balancesFor(tabId: string, ctx: ToolContext) {
@@ -47,6 +41,8 @@ async function balancesFor(tabId: string, ctx: ToolContext) {
     })),
   };
 }
+
+export { balancesFor };
 
 export const readTools = [
   defineTool({
@@ -242,15 +238,16 @@ export const readTools = [
     name: "list_expenses",
     title: "List expenses",
     description:
-      "Lists expenses in a tab, newest first. Amounts are in the tab's currency; originalAmount/expenseCurrency show what was entered when it differed. Use filter to narrow to expenses that involve the user, that they are owed on, or that they owe on.",
+      "Finds expenses in a tab, newest first. Filters combine (AND) and run on the server, so use them instead of paging through everything: " +
+      "amount/minAmount/maxAmount, from/to dates, paidBy, involving, search (description text) and filter (involved/owed/owe). " +
+      "Examples: {tab: \"Pauri\", amount: 1967} finds that expense in one call; {tab: \"Goa Trip\", paidBy: \"sam\", from: \"2026-11\", to: \"2026-11\"} lists what Sam paid in November. " +
+      "For totals (\"how much did we spend on X\", \"what's my share\") use summarize_expenses instead of adding up pages. " +
+      "Amounts are in the tab's currency; originalAmount/expenseCurrency show what was entered when it differed. Deleted expenses are included unless includeDeleted is false, and are marked deleted.",
     scope: "read",
     input: z.object({
       tab: tabRef,
-      filter: z
-        .enum(["all", "involved", "owed", "owe"])
-        .optional()
-        .describe("all (default), involved (you paid or share), owed (others owe you), owe (you owe)."),
-      search: z.string().max(200).optional().describe("Text to search in descriptions."),
+      ...expenseFilterShape,
+      includeDeleted: z.boolean().optional().describe("Include deleted expenses (default true)."),
       limit: z.number().int().min(1).max(50).optional().describe("Default 20."),
       offset: z.number().int().min(0).optional(),
     }),
@@ -259,12 +256,13 @@ export const readTools = [
       const t = await ctx.dir.requireTab(target.tabId);
       const names = nameIndex(t, ctx.userId);
       const limit = args.limit ?? 20;
+      const filters = queryOptions(t, args, ctx)!;
       const result = unwrap(
         await expenseService.getForTab(target.tabId, ctx.userId, {
           limit,
           offset: args.offset ?? 0,
-          ...(args.filter && args.filter !== "all" ? { filter: args.filter, userId: ctx.userId } : {}),
-          ...(args.search?.trim() ? { search: args.search.trim() } : {}),
+          ...filters,
+          ...(args.includeDeleted === false ? { excludeDeleted: true } : {}),
         }),
       );
       const expenses = result.expenses.map((e) => {
@@ -291,7 +289,7 @@ export const readTools = [
       });
       const offset = args.offset ?? 0;
       return {
-        summary: `Showing ${expenses.length} of ${result.total} expenses in ${target.kind === "friend" ? `your tab with ${target.name}` : `"${t.name}"`}.${offset + expenses.length < result.total ? ` Pass offset ${offset + expenses.length} for more.` : ""}`,
+        summary: `Showing ${expenses.length} of ${result.total}${Object.keys(filters).length > 0 ? " matching" : ""} expenses in ${target.kind === "friend" ? `your tab with ${target.name}` : `"${t.name}"`}.${offset + expenses.length < result.total ? ` Pass offset ${offset + expenses.length} for more.` : ""}`,
         data: { tabId: t.id, currency: t.currency, total: result.total, expenses },
       };
     },

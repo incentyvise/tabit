@@ -1102,11 +1102,17 @@ export const expenseService = {
     tabId: string,
     rawExpenses: Array<Record<string, unknown>>,
     userId: string,
+    options?: {
+      /** Write nothing unless every row is valid, and write all rows in one transaction. */
+      atomic?: boolean;
+    },
   ): Promise<
     Result<{
       imported: number;
       failed: number;
       errors?: string[];
+      /** Ids of the created expenses, in row order (only rows that were written). */
+      expenseIds: string[];
     }>
   > => {
     const isMember = await tab.isMember(tabId, userId);
@@ -1175,7 +1181,10 @@ export const expenseService = {
         (parsed.data.paidById
           ? await getParticipantIdForTabUser(tabId, parsed.data.paidById)
           : null);
-      if (!paidByParticipantId) {
+      const payerParticipant = paidByParticipantId
+        ? tabDetail.participants.find((p) => p.id === paidByParticipantId)
+        : undefined;
+      if (!paidByParticipantId || !payerParticipant) {
         errors.push(`Row ${i + 1}: Invalid payer`);
         continue;
       }
@@ -1221,7 +1230,8 @@ export const expenseService = {
 
       validated.push({
         tabId: parsed.data.tabId,
-        paidById: parsed.data.paidById ?? null,
+        // The payer's own account (null for a placeholder), not the default `userId`.
+        paidById: payerParticipant.userId ?? null,
         paidByParticipantId,
         amount: amountTab.toString(),
         currency: expenseCurrency,
@@ -1238,9 +1248,15 @@ export const expenseService = {
       });
     }
 
+    if (options?.atomic && errors.length > 0) {
+      return err(errors.join("; "), 400);
+    }
+
     let imported = 0;
-    for (let b = 0; b < validated.length; b += BATCH_SIZE) {
-      const batch = validated.slice(b, b + BATCH_SIZE);
+    const expenseIds: string[] = [];
+    const batchSize = options?.atomic ? Math.max(validated.length, 1) : BATCH_SIZE;
+    for (let b = 0; b < validated.length; b += batchSize) {
+      const batch = validated.slice(b, b + batchSize);
       const startIndex = b;
       try {
         const items = batch.map((v) => ({
@@ -1255,9 +1271,10 @@ export const expenseService = {
           expenseDate: v.expenseDate,
           splits: v.splits,
         }));
-        await expense.createBulk(items, userId);
+        expenseIds.push(...((await expense.createBulk(items, userId)) ?? []));
         imported += batch.length;
       } catch (e) {
+        if (options?.atomic) throw e;
         const errMsg = e instanceof Error ? e.message : String(e);
         for (let i = 0; i < batch.length; i++) {
           errors.push(`Row ${startIndex + i + 1}: ${errMsg}`);
@@ -1293,6 +1310,7 @@ export const expenseService = {
       imported,
       failed: rawExpenses.length - imported,
       errors: errors.length > 0 ? errors : undefined,
+      expenseIds,
     });
   },
 

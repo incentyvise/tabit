@@ -7,7 +7,7 @@ import {
   tabParticipant as tabParticipantTable,
   user,
 } from "db";
-import { eq, ne, desc, sql, or, and, inArray, isNull, not, type SQL } from "drizzle-orm";
+import { eq, ne, desc, sql, or, and, gte, lt, inArray, isNull, not, type SQL } from "drizzle-orm";
 import { getParticipantIdForTabUser, ensureMemberParticipantsForTab } from "./tab-participant.js";
 import { writeSourceColumns } from "./write-source.js";
 
@@ -25,7 +25,45 @@ export type GetExpensesForTabOptions = {
   filter?: ExpenseFilter;
   userId?: string;
   search?: string;
+  /** Exact amount, matched against the tab-currency total or the amount as entered. */
+  amount?: number;
+  /** Inclusive bounds on the tab-currency total. */
+  minAmount?: number;
+  maxAmount?: number;
+  /** expenseDate >= from. */
+  from?: Date;
+  /** expenseDate < to. */
+  to?: Date;
+  /** Only expenses paid by this person. */
+  paidBy?: ExpensePersonRef;
+  /** Only expenses this person paid or is in the split of. */
+  involving?: ExpensePersonRef;
+  /** Leave out soft-deleted expenses. */
+  excludeDeleted?: boolean;
 };
+
+/** A person in a tab: their participant id, plus their user id when they have an account. */
+export type ExpensePersonRef = { participantId: string; userId?: string | null };
+
+function paidByPerson(p: ExpensePersonRef): SQL {
+  return p.userId
+    ? or(eq(expenseTable.paidByParticipantId, p.participantId), eq(expenseTable.paidById, p.userId))!
+    : eq(expenseTable.paidByParticipantId, p.participantId);
+}
+
+function personOnSplit(p: ExpensePersonRef): SQL {
+  return p.userId
+    ? sql`exists (
+        select 1 from ${expenseSplit} es
+        where es."expenseId" = ${expenseTable.id}
+        and (es."participantId" = ${p.participantId} or es."userId" = ${p.userId})
+      )`
+    : sql`exists (
+        select 1 from ${expenseSplit} es
+        where es."expenseId" = ${expenseTable.id}
+        and es."participantId" = ${p.participantId}
+      )`;
+}
 
 function escapeIlikePattern(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
@@ -523,6 +561,28 @@ export const expense = {
       )!;
     }
 
+    const extra: SQL[] = [];
+    if (options?.amount !== undefined) {
+      const a = options.amount.toFixed(2);
+      extra.push(
+        sql`(${expenseTable.amount} = ${a}::numeric or ${expenseTable.originalAmount} = ${a}::numeric)`,
+      );
+    }
+    if (options?.minAmount !== undefined) {
+      extra.push(sql`${expenseTable.amount} >= ${options.minAmount.toFixed(2)}::numeric`);
+    }
+    if (options?.maxAmount !== undefined) {
+      extra.push(sql`${expenseTable.amount} <= ${options.maxAmount.toFixed(2)}::numeric`);
+    }
+    if (options?.from) extra.push(gte(expenseTable.expenseDate, options.from));
+    if (options?.to) extra.push(lt(expenseTable.expenseDate, options.to));
+    if (options?.paidBy) extra.push(paidByPerson(options.paidBy));
+    if (options?.involving) {
+      extra.push(or(paidByPerson(options.involving), personOnSplit(options.involving))!);
+    }
+    if (options?.excludeDeleted) extra.push(isNull(expenseTable.deletedAt));
+    if (extra.length > 0) filterWhere = and(filterWhere, ...extra)!;
+
     const baseExpenseQuery = db
       .select({
         id: expenseTable.id,
@@ -850,6 +910,7 @@ export const expense = {
         .insert(expenseTable)
         .values(
           resolved.map((v) => ({
+            ...writeSourceColumns(),
             tabId: v.tabId,
             paidById: v.paidById,
             paidByParticipantId: v.paidByParticipantId,
