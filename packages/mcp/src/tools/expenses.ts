@@ -311,7 +311,7 @@ export const expenseTools = [
     name: "create_expense",
     title: "Add an expense",
     description:
-      "Adds an expense to a group tab or to the 1:1 tab with a friend. Everyone in the split is notified, and the expense is labelled as added via this app. " +
+      "Adds an expense to a group tab or to the 1:1 tab with a friend. Everyone in the split and the payer is notified, and the expense is labelled as added via this app. " +
       "Confirm amount, payer and split with the user if anything is unclear. Never guess between similarly named people or tabs; if the tool returns candidates, ask the user. " +
       "For several expenses at once use create_expenses. " +
       DUPLICATE_HELP +
@@ -373,7 +373,7 @@ export const expenseTools = [
     title: "Add several expenses",
     description:
       "Adds up to 50 expenses to one tab in a single call. Every line is checked first and nothing is written unless all of them are valid (all-or-nothing). " +
-      "Each other person in the tab gets one notification for the whole batch instead of one per expense. " +
+      "Each other person the batch involves (as payer or in a split) gets one notification for the whole batch instead of one per expense. " +
       "Before writing, show the user one summary of every line (description, amount, payer, split) and get a single confirmation; call with dryRun: true to get that summary from Tab without writing. " +
       "Each line takes the same fields as create_expense (description, amount, currency, date, paidBy, splitType, participants, splits, splitLike). " +
       "Lines that look like an existing expense (or another line in the batch) block the write and come back as possibleDuplicates; pass allowDuplicates: true only after the user confirms. " +

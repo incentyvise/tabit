@@ -54,7 +54,7 @@ export function getPushTitle(payload: {
   placeholderDisplayName?: string;
   targetDisplayName?: string;
   action?: string;
-  payerName?: string;
+  payerName?: string | null;
   payeeName?: string;
 }): string {
   if (payload.forcePush)
@@ -96,12 +96,14 @@ export function getPushTitle(payload: {
     const amt = payload.amount
       ? ` ${payload.amount.includes(" (") ? payload.amount : `${sym}${payload.amount}`}`
       : "";
+    // Someone else paid: name the person who added it, and say who paid in the body.
+    const verb = payload.payerName ? "added" : "paid";
     if (payload.isDirect) {
-      return `${payload.fromUserName} paid${amt} for ${desc}`;
+      return `${payload.fromUserName} ${verb}${amt} for ${desc}`;
     }
     return payload.tabName
-      ? `${payload.fromUserName} paid${amt} for ${desc} in ${payload.tabName}`
-      : `${payload.fromUserName} paid${amt} for ${desc}`;
+      ? `${payload.fromUserName} ${verb}${amt} for ${desc} in ${payload.tabName}`
+      : `${payload.fromUserName} ${verb}${amt} for ${desc}`;
   }
   if (payload.type === "recurring_rule_needs_fix" && payload.tabName) {
     return `Recurring rule needs attention: ${payload.tabName}`;
@@ -209,6 +211,22 @@ export function getPushTitle(payload: {
   return "New notification";
 }
 
+/** "You owe $X" for someone in the split, "You're owed $X" for the payer. */
+function expenseShareSentence(payload: {
+  currencySymbol?: string;
+  recipientOweAmount?: string;
+  recipientIsPayer?: boolean;
+  recipientOwedAmount?: string;
+}): string {
+  const sym = payload.currencySymbol ?? "$";
+  if (payload.recipientIsPayer) {
+    return payload.recipientOwedAmount && Number(payload.recipientOwedAmount) > 0
+      ? `You're owed ${sym}${payload.recipientOwedAmount}`
+      : "";
+  }
+  return payload.recipientOweAmount ? `You owe ${sym}${payload.recipientOweAmount}` : "";
+}
+
 /** Push body, suffixed with "· via <client>" when an MCP client made the change. */
 export function getPushBody(
   payload: Parameters<typeof getBasePushBody>[0] & { viaMcpClient?: string | null },
@@ -240,9 +258,14 @@ function getBasePushBody(payload: {
   placeholderDisplayName?: string;
   targetDisplayName?: string;
   action?: string;
-  payerName?: string;
+  payerName?: string | null;
   payeeName?: string;
   isDirect?: boolean;
+  recipientIsPayer?: boolean;
+  recipientOwedAmount?: string;
+  removedFromExpense?: boolean;
+  shareChanged?: boolean;
+  involvedCount?: number;
 }): string {
   if (payload.forcePush) return "This is a test notification";
   if (payload.type === "friend_request") return "New friend request";
@@ -254,17 +277,20 @@ function getBasePushBody(payload: {
     if (payload.recurringRuleId && payload.ruleOwnerName) {
       const desc = payload.description || "an expense";
       const rule = payload.recurringRuleTitle || "a recurring rule";
-      const sym = payload.currencySymbol ?? "$";
-      const owe =
-        payload.recipientOweAmount != null
-          ? ` You owe ${sym}${payload.recipientOweAmount}.`
+      const paid = payload.recipientIsPayer
+        ? " You paid."
+        : payload.payerName
+          ? ` ${payload.payerName} paid.`
           : "";
-      return `Tab created ${desc} based on ${rule} by ${payload.ruleOwnerName}.${owe}`;
+      const share = expenseShareSentence(payload);
+      return `Tab created ${desc} based on ${rule} by ${payload.ruleOwnerName}.${paid}${share ? ` ${share}.` : ""}`;
     }
-    const sym = payload.currencySymbol ?? "$";
-    return payload.recipientOweAmount
-      ? `You owe ${sym}${payload.recipientOweAmount}`
-      : "New expense added";
+    const share = expenseShareSentence(payload);
+    if (payload.recipientIsPayer) return share ? `You paid. ${share}` : "You paid";
+    if (payload.payerName) {
+      return share ? `${payload.payerName} paid. ${share}` : `${payload.payerName} paid`;
+    }
+    return share || "New expense added";
   }
   if (payload.type === "recurring_rule_needs_fix") {
     const t = payload.tabName ?? "your tab";
@@ -274,16 +300,20 @@ function getBasePushBody(payload: {
     const sym = payload.currencySymbol ?? "$";
     const formatAmt = (a: string) =>
       a.includes(" (") ? a : `${sym}${a}`;
+    if (payload.removedFromExpense) return "You're no longer part of this expense";
     const parts: string[] = [];
     if (payload.descriptionChanged && payload.description) {
       parts.push(`Description: ${payload.description}`);
     }
     if (payload.amountChanged) {
       const amt = payload.amount ? formatAmt(payload.amount) : "";
-      const owe = payload.recipientOweAmount
-        ? ` You owe ${sym}${payload.recipientOweAmount}`
-        : "";
-      parts.push(`Amount: ${amt}${owe}`);
+      const share = expenseShareSentence(payload);
+      parts.push(`Amount: ${amt}${share ? ` ${share}` : ""}`);
+    } else if (payload.shareChanged) {
+      // Added to the split or made the payer without the total changing.
+      const share = expenseShareSentence(payload);
+      if (payload.recipientIsPayer) parts.push(share ? `You paid. ${share}` : "You paid");
+      else if (share) parts.push(share);
     }
     return parts.length > 0 ? parts.join(". ") : "Expense updated";
   }
@@ -298,7 +328,8 @@ function getBasePushBody(payload: {
     typeof payload.count === "number" &&
     payload.tabName
   ) {
-    return `${payload.count} expense${payload.count !== 1 ? "s" : ""} imported to ${payload.tabName}`;
+    const n = payload.involvedCount ?? payload.count;
+    return `${n} expense${n !== 1 ? "s" : ""} involving you in ${payload.tabName}`;
   }
   if (payload.type === "poke") return "Poke them back!";
   if (payload.type === "payment_reminder") {

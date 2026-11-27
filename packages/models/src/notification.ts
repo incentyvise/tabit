@@ -83,6 +83,11 @@ export const expenseAddedNotificationPayloadSchema = z.object({
   description: z.string(),
   amount: z.string(),
   recipientOweAmount: z.string().optional(),
+  /** Payer's name when someone other than the sender (`fromUserName`) paid. */
+  payerName: z.string().nullable().optional(),
+  /** True when the recipient is the payer; `recipientOwedAmount` is then what they're owed. */
+  recipientIsPayer: z.boolean().optional(),
+  recipientOwedAmount: z.string().optional(),
   currencySymbol: z.string().optional(),
   createdAt: z.string(),
   /** When set, expense was created by a recurring rule (copy for push/UI). */
@@ -120,6 +125,13 @@ export const expenseUpdatedNotificationPayloadSchema = z.object({
   description: z.string(),
   amount: z.string(),
   recipientOweAmount: z.string().optional(),
+  /** True when the recipient is the payer; `recipientOwedAmount` is then what they're owed. */
+  recipientIsPayer: z.boolean().optional(),
+  recipientOwedAmount: z.string().optional(),
+  /** True when the recipient was in the expense before this edit but no longer is. */
+  removedFromExpense: z.boolean().optional(),
+  /** True when the recipient's share or payer role changed in this edit. */
+  shareChanged: z.boolean().optional(),
   currencySymbol: z.string().optional(),
   descriptionChanged: z.boolean().optional(),
   amountChanged: z.boolean().optional(),
@@ -172,6 +184,8 @@ export const expensesBulkImportedNotificationPayloadSchema = z.object({
   fromUserId: z.string(),
   fromUserName: z.string().nullable(),
   count: z.number(),
+  /** How many of the imported expenses involve the recipient. */
+  involvedCount: z.number().optional(),
   createdAt: z.string(),
 });
 export type ExpensesBulkImportedNotificationPayload = z.infer<
@@ -453,6 +467,9 @@ export function createExpenseAddedNotificationPayload(data: {
   description: string;
   amount: string;
   recipientOweAmount?: string;
+  payerName?: string | null;
+  recipientIsPayer?: boolean;
+  recipientOwedAmount?: string;
   currencySymbol?: string;
   createdAt: Date;
   recurringRuleId?: string;
@@ -471,6 +488,9 @@ export function createExpenseAddedNotificationPayload(data: {
     description: data.description,
     amount: data.amount,
     recipientOweAmount: data.recipientOweAmount,
+    payerName: data.payerName,
+    recipientIsPayer: data.recipientIsPayer,
+    recipientOwedAmount: data.recipientOwedAmount,
     currencySymbol: data.currencySymbol,
     createdAt: data.createdAt.toISOString(),
     recurringRuleId: data.recurringRuleId,
@@ -509,6 +529,10 @@ export function createExpenseUpdatedNotificationPayload(data: {
   description: string;
   amount: string;
   recipientOweAmount?: string;
+  recipientIsPayer?: boolean;
+  recipientOwedAmount?: string;
+  removedFromExpense?: boolean;
+  shareChanged?: boolean;
   currencySymbol?: string;
   descriptionChanged?: boolean;
   amountChanged?: boolean;
@@ -526,6 +550,10 @@ export function createExpenseUpdatedNotificationPayload(data: {
     description: data.description,
     amount: data.amount,
     recipientOweAmount: data.recipientOweAmount,
+    recipientIsPayer: data.recipientIsPayer,
+    recipientOwedAmount: data.recipientOwedAmount,
+    removedFromExpense: data.removedFromExpense,
+    shareChanged: data.shareChanged,
     currencySymbol: data.currencySymbol,
     descriptionChanged: data.descriptionChanged,
     amountChanged: data.amountChanged,
@@ -596,6 +624,7 @@ export function createExpensesBulkImportedNotificationPayload(data: {
   fromUserId: string;
   fromUserName: string | null;
   count: number;
+  involvedCount?: number;
   createdAt: Date;
 }): ExpensesBulkImportedNotificationPayload {
   return {
@@ -605,6 +634,7 @@ export function createExpensesBulkImportedNotificationPayload(data: {
     fromUserId: data.fromUserId,
     fromUserName: data.fromUserName,
     count: data.count,
+    involvedCount: data.involvedCount,
     createdAt: data.createdAt.toISOString(),
   };
 }
