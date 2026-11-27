@@ -38,23 +38,7 @@ async function publish(
 export const notificationService = {
   publishExpenseAddedToUser: async (
     userId: string,
-    params: {
-      tabId: string;
-      expenseId: string;
-      tabName: string;
-      isDirect?: boolean;
-      fromUserId: string;
-      fromUserName: string | null;
-      description: string;
-      amount: string;
-      recipientOweAmount?: string;
-      currencySymbol?: string;
-      createdAt: Date;
-      recurringRuleId?: string;
-      recurringRuleTitle?: string;
-      ruleOwnerName?: string | null;
-      editRulePath?: string;
-    },
+    params: Parameters<typeof createExpenseAddedNotificationPayload>[0],
   ): Promise<void> => {
     const payload = createExpenseAddedNotificationPayload(params);
     await publish(userId, payload);
@@ -77,22 +61,7 @@ export const notificationService = {
 
   publishExpenseUpdatedToUser: async (
     userId: string,
-    params: {
-      tabId: string;
-      expenseId: string;
-      tabName: string;
-      isDirect?: boolean;
-      fromUserId: string;
-      fromUserName: string | null;
-      description: string;
-      amount: string;
-      recipientOweAmount?: string;
-      currencySymbol?: string;
-      descriptionChanged?: boolean;
-      amountChanged?: boolean;
-      previousDescription?: string;
-      createdAt: Date;
-    },
+    params: Parameters<typeof createExpenseUpdatedNotificationPayload>[0],
   ): Promise<void> => {
     const payload = createExpenseUpdatedNotificationPayload(params);
     await publish(userId, payload);
@@ -139,14 +108,7 @@ export const notificationService = {
 
   publishExpensesBulkImportedToUser: async (
     userId: string,
-    params: {
-      tabId: string;
-      tabName: string;
-      fromUserId: string;
-      fromUserName: string | null;
-      count: number;
-      createdAt: Date;
-    },
+    params: Parameters<typeof createExpensesBulkImportedNotificationPayload>[0],
   ): Promise<void> => {
     const payload = createExpensesBulkImportedNotificationPayload(params);
     await publish(userId, payload);

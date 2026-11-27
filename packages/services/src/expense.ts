@@ -36,6 +36,81 @@ type LedgerMember = {
   participantId: string;
 };
 
+function displayNameOf(
+  u: { name: string | null; username?: string | null } | null | undefined,
+): string | null {
+  return u?.name ?? (u?.username ? `@${u.username}` : null);
+}
+
+/**
+ * Everyone with an account whose balance an expense touches: people in the
+ * split plus the payer, keyed by userId (placeholders have no account).
+ */
+function involvedUsers(
+  members: LedgerMember[],
+  payer: { userId: string | null; participantId: string },
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of members) if (m.userId) out.set(m.userId, m.participantId);
+  if (payer.userId) out.set(payer.userId, payer.participantId);
+  return out;
+}
+
+/**
+ * "Expense added" to everyone involved except the person who added it. The
+ * sender is always that person; when someone else paid, `payerName` says who,
+ * and the payer is told what they're owed rather than what they owe.
+ */
+async function notifyExpenseAdded(params: {
+  tabId: string;
+  expenseId: string;
+  tabInfo: { name: string; isDirect: boolean };
+  performedById: string;
+  actorName: string | null;
+  payer: { userId: string | null; participantId: string; name: string | null };
+  members: LedgerMember[];
+  splitByParticipant: Map<string, number>;
+  amountTab: number;
+  description: string;
+  notifyAmount: string;
+  currencySymbol: string;
+  recurring?: {
+    recurringRuleId: string;
+    recurringRuleTitle: string;
+    ruleOwnerName: string | null;
+    editRulePath: string;
+  };
+}): Promise<number> {
+  const recipients = involvedUsers(params.members, params.payer);
+  recipients.delete(params.performedById);
+  const payerIsActor = params.payer.userId === params.performedById;
+  const createdAt = new Date();
+  for (const [userId, participantId] of recipients) {
+    const isPayer = participantId === params.payer.participantId;
+    const share = params.splitByParticipant.get(participantId);
+    await notificationService.publishExpenseAddedToUser(userId, {
+      tabId: params.tabId,
+      expenseId: params.expenseId,
+      tabName: params.tabInfo.name,
+      isDirect: params.tabInfo.isDirect,
+      fromUserId: params.performedById,
+      fromUserName: params.actorName,
+      payerName: payerIsActor ? undefined : (params.payer.name ?? "Someone"),
+      description: params.description,
+      amount: params.notifyAmount,
+      recipientOweAmount: isPayer ? undefined : share?.toString(),
+      recipientIsPayer: isPayer || undefined,
+      recipientOwedAmount: isPayer
+        ? roundTo2(params.amountTab - (share ?? 0)).toString()
+        : undefined,
+      currencySymbol: params.currencySymbol,
+      createdAt,
+      ...params.recurring,
+    });
+  }
+  return recipients.size;
+}
+
 type ResolvedSplitRow = {
   userId: string | null;
   participantId: string;
@@ -553,10 +628,9 @@ export const expenseService = {
 
     const tabInfo = await tab.getTabInfoForNotifications(input.tabId, performedById);
     const payerUser = paidByUserId ? await userData.getById(paidByUserId) : null;
-    const payerDisplayName =
-      payerUser?.name ??
-      (payerUser?.username ? `@${payerUser.username}` : null) ??
-      payerParticipant.displayName;
+    const payerDisplayName = displayNameOf(payerUser) ?? payerParticipant.displayName;
+    const actorUser =
+      paidByUserId === performedById ? payerUser : await userData.getById(performedById);
     const splitByParticipant = new Map(splits.map((s) => [s.participantId, s.amount]));
     const participants = members.map((m) => {
       const meta = tabDetail.participants.find((p) => p.id === m.participantId);
@@ -580,39 +654,35 @@ export const expenseService = {
         : String(amountTab);
     const currencySymbol = getCurrency(tabCurrency)?.symbol ?? "$";
 
-    const notifyFromUserId = paidByUserId ?? performedById;
-
-    const notificationRecipients = members.filter(
-      (m) => m.userId != null && m.userId !== performedById,
-    );
     const notificationStartMs = Date.now();
-    spanEvent("expense.create.notifications_start", {
-      expenseId,
-      recipientCount: notificationRecipients.length,
-    });
+    spanEvent("expense.create.notifications_start", { expenseId });
 
-    if (tabInfo) {
-      for (const m of members) {
-        if (m.userId != null && m.userId !== performedById) {
-          await notificationService.publishExpenseAddedToUser(m.userId, {
-            tabId: input.tabId,
-            expenseId,
-            tabName: tabInfo.name,
-            isDirect: tabInfo.isDirect,
-            fromUserId: notifyFromUserId,
-            fromUserName: payerDisplayName,
-            description: input.description,
-            amount: notifyAmount,
-            recipientOweAmount: splitByParticipant.get(m.participantId)?.toString(),
-            currencySymbol,
-            createdAt: new Date(),
-          });
-        }
-      }
-    }
+    const recipientCount = tabInfo
+      ? await notifyExpenseAdded({
+          tabId: input.tabId,
+          expenseId,
+          tabInfo,
+          performedById,
+          actorName:
+            displayNameOf(actorUser) ??
+            tabDetail.participants.find((p) => p.userId === performedById)?.displayName ??
+            null,
+          payer: {
+            userId: paidByUserId,
+            participantId: paidByParticipantId,
+            name: payerDisplayName,
+          },
+          members,
+          splitByParticipant,
+          amountTab,
+          description: input.description,
+          notifyAmount,
+          currencySymbol,
+        })
+      : 0;
     spanEvent("expense.create.notifications_complete", {
       expenseId,
-      recipientCount: notificationRecipients.length,
+      recipientCount,
       notificationDurationMs: Date.now() - notificationStartMs,
     });
 
@@ -749,13 +819,12 @@ export const expenseService = {
 
     const tabInfo = await tab.getTabInfoForNotifications(input.tabId, performedById);
     const payerUser = paidByUserId ? await userData.getById(paidByUserId) : null;
-    const payerDisplayName =
-      payerUser?.name ??
-      (payerUser?.username ? `@${payerUser.username}` : null) ??
-      payerParticipant.displayName;
+    const payerDisplayName = displayNameOf(payerUser) ?? payerParticipant.displayName;
     const ownerUser = await userData.getById(ruleOwnerId);
     const ruleOwnerName =
-      ownerUser?.name ?? (ownerUser?.username ? `@${ownerUser.username}` : null);
+      displayNameOf(ownerUser) ??
+      tabDetail.participants.find((p) => p.userId === ruleOwnerId)?.displayName ??
+      null;
     const splitByParticipant = new Map(splits.map((s) => [s.participantId, s.amount]));
 
     const notifyAmount =
@@ -763,31 +832,32 @@ export const expenseService = {
         ? `${input.amount} ${expenseCurrency} (${amountTab} ${tabCurrency})`
         : String(amountTab);
     const currencySymbol = getCurrency(tabCurrency)?.symbol ?? "$";
-    const editRulePath = `/expense/recurring/${ruleId}`;
-    const notifyFromUserId = paidByUserId ?? performedById;
 
     if (tabInfo) {
-      for (const m of members) {
-        if (m.userId != null && m.userId !== performedById) {
-          await notificationService.publishExpenseAddedToUser(m.userId, {
-            tabId: input.tabId,
-            expenseId,
-            tabName: tabInfo.name,
-            isDirect: tabInfo.isDirect,
-            fromUserId: notifyFromUserId,
-            fromUserName: payerDisplayName,
-            description: input.description,
-            amount: notifyAmount,
-            recipientOweAmount: splitByParticipant.get(m.participantId)?.toString(),
-            currencySymbol,
-            createdAt: new Date(),
-            recurringRuleId: ruleId,
-            recurringRuleTitle: ruleTitle,
-            ruleOwnerName,
-            editRulePath,
-          });
-        }
-      }
+      await notifyExpenseAdded({
+        tabId: input.tabId,
+        expenseId,
+        tabInfo,
+        performedById,
+        actorName: ruleOwnerName,
+        payer: {
+          userId: paidByUserId,
+          participantId: paidByParticipantId,
+          name: payerDisplayName,
+        },
+        members,
+        splitByParticipant,
+        amountTab,
+        description: input.description,
+        notifyAmount,
+        currencySymbol,
+        recurring: {
+          recurringRuleId: ruleId,
+          recurringRuleTitle: ruleTitle,
+          ruleOwnerName,
+          editRulePath: `/expense/recurring/${ruleId}`,
+        },
+      });
     }
 
     return ok({ expenseId, created: true });
@@ -949,28 +1019,60 @@ export const expenseService = {
         : String(amountTab);
     const currencySymbol = getCurrency(tabCurrency)?.symbol ?? "$";
 
+    // Everyone whose balance this edit touches: the new split and payer, plus
+    // anyone who was in the split or paid before and now isn't.
+    const recipients = involvedUsers(members, {
+      userId: paidByUserId,
+      participantId: paidByParticipantId,
+    });
+    // Skip anyone who has since left the tab: they can't open it anyway.
+    const currentMemberIds = new Set(tabDetail.members.map((m) => m.userId));
+    const previouslyInvolved = new Set(
+      [existingExp.paidById, ...existingExp.splits.map((s) => s.userId)].filter(
+        (u): u is string => u != null && currentMemberIds.has(u),
+      ),
+    );
+    const previousShareByUser = new Map(
+      existingExp.splits
+        .filter((s) => s.userId != null)
+        .map((s) => [s.userId as string, Number(s.amount)]),
+    );
+    const splitByParticipant = new Map(splits.map((s) => [s.participantId, s.amount]));
+
     if (tabInfo && fromUser) {
-      for (const m of members) {
-        if (m.userId != null && m.userId !== performedById) {
-          await notificationService.publishExpenseUpdatedToUser(m.userId, {
-            tabId,
-            expenseId,
-            tabName: tabInfo.name,
-            isDirect: tabInfo.isDirect,
-            fromUserId: performedById,
-            fromUserName: fromUser.name ?? null,
-            description: input.description ?? "",
-            amount: notifyAmount,
-            recipientOweAmount: splits
-              .find((s) => s.participantId === m.participantId)
-              ?.amount.toString(),
-            currencySymbol,
-            descriptionChanged,
-            amountChanged,
-            previousDescription: existingExp.description ?? "",
-            createdAt: new Date(),
-          });
-        }
+      const createdAt = new Date();
+      const userIds = new Set([...recipients.keys(), ...previouslyInvolved]);
+      userIds.delete(performedById);
+      for (const userId of userIds) {
+        const participantId = recipients.get(userId);
+        const isPayer = participantId != null && participantId === paidByParticipantId;
+        const share = participantId != null ? splitByParticipant.get(participantId) : undefined;
+        await notificationService.publishExpenseUpdatedToUser(userId, {
+          tabId,
+          expenseId,
+          tabName: tabInfo.name,
+          isDirect: tabInfo.isDirect,
+          fromUserId: performedById,
+          fromUserName:
+            displayNameOf(fromUser) ??
+            tabDetail.participants.find((p) => p.userId === performedById)?.displayName ??
+            null,
+          description: input.description ?? "",
+          amount: notifyAmount,
+          shareChanged:
+            participantId != null &&
+            (isPayer !== (existingExp.paidById === userId) ||
+              (share ?? 0) !== (previousShareByUser.get(userId) ?? 0)),
+          recipientOweAmount: isPayer ? undefined : share?.toString(),
+          recipientIsPayer: isPayer || undefined,
+          recipientOwedAmount: isPayer ? roundTo2(amountTab - (share ?? 0)).toString() : undefined,
+          removedFromExpense: participantId == null || undefined,
+          currencySymbol,
+          descriptionChanged,
+          amountChanged,
+          previousDescription: existingExp.description ?? "",
+          createdAt,
+        });
       }
     }
 
@@ -1074,7 +1176,12 @@ export const expenseService = {
     const tabCurrency = (await tab.getCurrency(tabId)) ?? "USD";
     const currencySymbol = getCurrency(tabCurrency)?.symbol ?? "$";
     const restoredAt = new Date();
-    const notifyUserIds = exp.splits.map((s) => s.userId).filter((u): u is string => u != null);
+    // Same people as on delete: the payer and everyone in the split.
+    const notifyUserIds = new Set<string>();
+    if (exp.paidById) notifyUserIds.add(exp.paidById);
+    for (const s of exp.splits) {
+      if (s.userId) notifyUserIds.add(s.userId);
+    }
 
     if (tabInfo && fromUser) {
       for (const participantId of notifyUserIds) {
@@ -1254,6 +1361,8 @@ export const expenseService = {
 
     let imported = 0;
     const expenseIds: string[] = [];
+    /** Written rows each user pays for or is split into. */
+    const involvedCount = new Map<string, number>();
     const batchSize = options?.atomic ? Math.max(validated.length, 1) : BATCH_SIZE;
     for (let b = 0; b < validated.length; b += batchSize) {
       const batch = validated.slice(b, b + batchSize);
@@ -1273,6 +1382,12 @@ export const expenseService = {
         }));
         expenseIds.push(...((await expense.createBulk(items, userId)) ?? []));
         imported += batch.length;
+        for (const v of batch) {
+          const involved = new Set<string>();
+          if (v.paidById) involved.add(v.paidById);
+          for (const sp of v.splits) if (sp.userId) involved.add(sp.userId);
+          for (const u of involved) involvedCount.set(u, (involvedCount.get(u) ?? 0) + 1);
+        }
       } catch (e) {
         if (options?.atomic) throw e;
         const errMsg = e instanceof Error ? e.message : String(e);
@@ -1291,18 +1406,19 @@ export const expenseService = {
       failed: rawExpenses.length - imported,
     });
 
+    // Only people some written row involves, each told how many involve them.
     if (imported > 0 && tabInfo && fromUser) {
-      for (const m of tabDetail.members) {
-        if (m.userId !== userId) {
-          await notificationService.publishExpensesBulkImportedToUser(m.userId, {
-            tabId,
-            tabName: tabInfo.name,
-            fromUserId: userId,
-            fromUserName: fromUser.name ?? null,
-            count: imported,
-            createdAt: new Date(),
-          });
-        }
+      for (const [recipientId, count] of involvedCount) {
+        if (recipientId === userId) continue;
+        await notificationService.publishExpensesBulkImportedToUser(recipientId, {
+          tabId,
+          tabName: tabInfo.name,
+          fromUserId: userId,
+          fromUserName: fromUser.name ?? null,
+          count: imported,
+          involvedCount: count,
+          createdAt: new Date(),
+        });
       }
     }
 

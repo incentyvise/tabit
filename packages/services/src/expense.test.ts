@@ -875,4 +875,220 @@ describe("expenseService", () => {
       }
     });
   });
+
+  describe("notification recipients", () => {
+    const u = (id: string) => ({ id, email: `${id}@test.com`, name: id.toUpperCase(), username: id });
+    const threeTab = {
+      ...baseTabDetail,
+      members: ["user1", "user2", "user3"].map((id) => ({ userId: id, role: "member", user: u(id) })),
+      participants: ["user1", "user2", "user3"].map((id) => ({
+        id: `pid-${id}`,
+        kind: "member",
+        userId: id,
+        displayName: id.toUpperCase(),
+        user: u(id),
+      })),
+    };
+    const storedExpense = (over: Record<string, unknown>) => ({
+      id: "exp1",
+      tabId: "tab1",
+      paidById: "user1",
+      paidByParticipantId: "pid-user1",
+      payerPartName: null,
+      recurringRuleId: null,
+      amount: 90,
+      currency: "USD",
+      originalAmount: 90,
+      description: "Dinner",
+      splitType: "equal",
+      expenseDate: new Date(),
+      createdAt: new Date(),
+      deletedAt: null,
+      paidBy: u("user1"),
+      paidByEmail: "user1@test.com",
+      paidByName: "USER1",
+      paidByUsername: "user1",
+      splits: [],
+      reactions: [],
+      ...over,
+    });
+    const split = (userId: string, amount: number) => ({
+      id: `s-${userId}`,
+      expenseId: "exp1",
+      userId,
+      participantId: `pid-${userId}`,
+      amount,
+      weight: null,
+      user: u(userId),
+    });
+    const calls = (fn: (...args: never[]) => unknown) =>
+      new Map(
+        (vi.mocked(fn).mock.calls as unknown as Array<[string, Record<string, unknown>]>).map(
+          ([userId, params]) => [userId, params],
+        ),
+      );
+
+    beforeEach(() => {
+      vi.mocked(tab.getWithMembers).mockResolvedValue(threeTab as never);
+      vi.mocked(tab.isMember).mockResolvedValue(true);
+      vi.mocked(tab.getTabInfoForNotifications).mockResolvedValue({
+        name: "Trip",
+        isDirect: false,
+        currency: "USD",
+        displayName: "Trip",
+      });
+      vi.mocked(userData.getById).mockImplementation(
+        async (id: string) => ({ ...u(id), defaultCurrency: "USD" }) as never,
+      );
+    });
+
+    test("create: notifies a payer outside the split, sent by the person who added it", async () => {
+      vi.mocked(expense.create).mockResolvedValue("exp1");
+
+      const result = await expenseService.create(
+        { ...baseCreateInput, amount: 90, paidById: "user2", participantIds: ["user3"] },
+        "user1",
+      );
+
+      expect(result.success).toBe(true);
+      const sent = calls(notificationService.publishExpenseAddedToUser);
+      expect([...sent.keys()].sort()).toEqual(["user2", "user3"]);
+      expect(sent.get("user2")).toMatchObject({
+        fromUserId: "user1",
+        fromUserName: "USER1",
+        payerName: "USER2",
+        recipientIsPayer: true,
+        recipientOwedAmount: "90",
+        recipientOweAmount: undefined,
+      });
+      expect(sent.get("user3")).toMatchObject({
+        fromUserId: "user1",
+        payerName: "USER2",
+        recipientOweAmount: "90",
+        recipientIsPayer: undefined,
+      });
+    });
+
+    test("create: payer in the split is owed the others' shares", async () => {
+      vi.mocked(expense.create).mockResolvedValue("exp1");
+
+      await expenseService.create(
+        { ...baseCreateInput, amount: 90, paidById: "user2" },
+        "user1",
+      );
+
+      const sent = calls(notificationService.publishExpenseAddedToUser);
+      expect([...sent.keys()].sort()).toEqual(["user2", "user3"]);
+      expect(sent.get("user2")).toMatchObject({ recipientIsPayer: true, recipientOwedAmount: "60" });
+      expect(sent.get("user3")).toMatchObject({ recipientOweAmount: "30" });
+    });
+
+    test("create: the actor paying gets no payerName and no notification", async () => {
+      vi.mocked(expense.create).mockResolvedValue("exp1");
+
+      await expenseService.create({ ...baseCreateInput, amount: 90 }, "user1");
+
+      const sent = calls(notificationService.publishExpenseAddedToUser);
+      expect([...sent.keys()].sort()).toEqual(["user2", "user3"]);
+      expect(sent.get("user2")?.payerName).toBeUndefined();
+    });
+
+    test("update: notifies people removed from the split and the old payer", async () => {
+      vi.mocked(expense.getById).mockResolvedValue(
+        storedExpense({
+          paidById: "user2",
+          paidByParticipantId: "pid-user2",
+          splits: [split("user2", 45), split("user3", 45)],
+        }) as never,
+      );
+
+      const result = await expenseService.update(
+        "tab1",
+        "exp1",
+        { ...baseCreateInput, amount: 90, description: "Dinner", paidById: "user1", participantIds: ["user1", "user3"] },
+        "user1",
+      );
+
+      expect(result.success).toBe(true);
+      const sent = calls(notificationService.publishExpenseUpdatedToUser);
+      expect([...sent.keys()].sort()).toEqual(["user2", "user3"]);
+      expect(sent.get("user2")).toMatchObject({ removedFromExpense: true });
+      expect(sent.get("user3")).toMatchObject({
+        recipientOweAmount: "45",
+        removedFromExpense: undefined,
+        shareChanged: false,
+      });
+    });
+
+    test("update: skips people who have left the tab; flags new share", async () => {
+      vi.mocked(tab.getWithMembers).mockResolvedValue({
+        ...threeTab,
+        members: threeTab.members.filter((m) => m.userId !== "user2"),
+        participants: threeTab.participants.map((p) =>
+          p.userId === "user2" ? { ...p, kind: "placeholder", userId: null } : p,
+        ),
+      } as never);
+      vi.mocked(expense.getById).mockResolvedValue(
+        storedExpense({ splits: [split("user1", 45), split("user2", 45)] }) as never,
+      );
+
+      await expenseService.update(
+        "tab1",
+        "exp1",
+        { ...baseCreateInput, amount: 90, description: "Dinner", participantIds: ["user1", "user3"] },
+        "user1",
+      );
+
+      const sent = calls(notificationService.publishExpenseUpdatedToUser);
+      expect([...sent.keys()]).toEqual(["user3"]);
+      expect(sent.get("user3")).toMatchObject({ shareChanged: true, recipientOweAmount: "45" });
+    });
+
+    test("create: falls back to the actor's participant name", async () => {
+      vi.mocked(expense.create).mockResolvedValue("exp1");
+      vi.mocked(userData.getById).mockImplementation(
+        async (id: string) => ({ ...u(id), name: null, username: null, defaultCurrency: "USD" }) as never,
+      );
+
+      await expenseService.create({ ...baseCreateInput, amount: 90 }, "user1");
+
+      const sent = calls(notificationService.publishExpenseAddedToUser);
+      expect(sent.get("user2")?.fromUserName).toBe("USER1");
+    });
+
+    test("restore: notifies a payer outside the split", async () => {
+      vi.mocked(expense.getById).mockResolvedValue(
+        storedExpense({
+          paidById: "user2",
+          paidByParticipantId: "pid-user2",
+          deletedAt: new Date(),
+          splits: [split("user3", 90)],
+        }) as never,
+      );
+
+      await expenseService.restore("tab1", "exp1", "user1");
+
+      const sent = calls(notificationService.publishExpenseRestoredToUser);
+      expect([...sent.keys()].sort()).toEqual(["user2", "user3"]);
+    });
+
+    test("createBulk: only people a row involves, with their own count", async () => {
+      vi.mocked(expense.createBulk).mockResolvedValue(["e1", "e2"]);
+      const row = { amount: 10, description: "x", splitType: "equal", expenseDate: new Date() };
+
+      const result = await expenseService.createBulk(
+        "tab1",
+        [
+          { ...row, participantIds: ["user1", "user2"] },
+          { ...row, participantIds: ["user1", "user2"] },
+        ],
+        "user1",
+      );
+
+      expect(result.success).toBe(true);
+      const sent = calls(notificationService.publishExpensesBulkImportedToUser);
+      expect([...sent.keys()]).toEqual(["user2"]);
+      expect(sent.get("user2")).toMatchObject({ count: 2, involvedCount: 2 });
+    });
+  });
 });
