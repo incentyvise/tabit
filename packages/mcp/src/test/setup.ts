@@ -30,6 +30,7 @@ vi.mock("services", () => ({
     getById: vi.fn(),
     getForTab: vi.fn(),
     getAuditLog: vi.fn(),
+    createBulk: vi.fn(),
   },
   tabService: {
     getBalancesForTab: vi.fn(),

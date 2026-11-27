@@ -12,6 +12,7 @@ export type {
   Expense,
   ExpenseAuditLogEntry,
   ExpenseFilter,
+  ExpensePersonRef,
   ExpenseReaction,
 } from "./expense.js";
 
